@@ -2,12 +2,14 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs')
 
 const patientSchema = new mongoose.Schema({
-    name: String,
-    email: String,
-    phoneNumber: String,
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     gender: String,
     dateOfBirth: Date,
-    profileImage: String,
+    profileImage: Object,
     bloodGroup: String,
     cnic: String,
     address: String,

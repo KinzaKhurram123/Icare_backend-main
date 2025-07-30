@@ -1,35 +1,21 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs')
+const mongoose = require("mongoose");
 
 const doctorSchema = new mongoose.Schema({
-    name: String,
-    email: String,
-    phoneNumber: String,
-    gender: String,
-    dateOfBirth: Date,
-    profileImage: String,
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     specialization: String,
     degrees: [String],
-    experience: Number,
+    experience: String,
     licenseNumber: String,
     clinicName: String,
     clinicAddress: String,
     availableDays: [String],
     availableTime: {
-        from: String,
-        to: String
+        start: String,
+        end: String
     },
     isApproved: { type: Boolean, default: false },
-    ratings: { type: Number, default: 0 },
-    reviews: [
-        {
-            patientName: String,
-            comment: String,
-            rating: Number,
-            date: Date
-        }
-    ]
-}, { timestamps: true });
+    ratings: [Number],
+    reviews: [String]
+});
 
-
-const Doctor = mongoose.model('Doctor', doctorSchema);
+module.exports = mongoose.model("Doctor", doctorSchema);

@@ -2,16 +2,12 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs')
 
 const pharmacySchema = new mongoose.Schema({
-    name: String,
-    email: String,
-    phoneNumber: String,
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     cnic: String,
     ownerName: String,
-
     licenseNumber: String,
     licenseDocument: String,
     isApproved: { type: Boolean, default: false },
-
     address: String,
     city: String,
     location: {
@@ -30,7 +26,6 @@ const pharmacySchema = new mongoose.Schema({
         from: String,
         to: String
     },
-
     availableMedicines: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' }]
 }, { timestamps: true });
 
