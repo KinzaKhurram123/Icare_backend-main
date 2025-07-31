@@ -15,6 +15,8 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/doctors', require('./routes/doctorRoutes'));
 app.use('/api/paitents', require('./routes/patientsRoutes'));
+app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
+app.use('/api/appointments', require('./routes/appointmentsRoutes'));
 
 
 app.use(errorHandler);

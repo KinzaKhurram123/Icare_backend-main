@@ -68,3 +68,14 @@ exports.AddPaitentsDetails = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 }
+
+
+exports.getAllPaitent = async (req, res) => {
+    try {
+        const paitents = await Patient.find().populate("user", "email phoneNumber role name ")
+        res.status(200).json({ success: true, paitents, message: 'Get All Patients successfully' })
+    } catch (error) {
+        console.error("Get All Patients Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}

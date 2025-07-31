@@ -2,9 +2,9 @@ const bcrypt = require("bcryptjs");
 const Pharmacy = require("../models/pharmacy");
 
 
-exports.AddPharmacyDetails = async (res, req) => {
+exports.AddPharmacyDetails = async (req, res) => {
     try {
-        const userId = req.body;
+        const userId = req.user._id;
         const {
             cnic,
             ownerName,
@@ -60,7 +60,18 @@ exports.AddPharmacyDetails = async (res, req) => {
             success: true
         })
     } catch (error) {
-        console.error("AddDoctorDetails Error:", error);
+        console.error("AddPharmacyDetails Error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 }
+
+
+exports.getAllPharmacy = async (req, res) => {
+    try {
+        const pharmacies = await Pharmacy.find().populate("user", "name email role phoneNumber");
+        res.status(200).json({ success: true, pharmacies });
+    } catch (error) {
+        console.error("Get All Pharmacies Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
