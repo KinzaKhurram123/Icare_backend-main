@@ -24,11 +24,18 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["Patient", "Doctor", "Pharmacy", "Laboratory"],
+      enum: [
+        "Patient",
+        "Doctor",
+        "Pharmacy",
+        "Laboratory",
+        "Instructor",
+        "Student",
+      ],
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 UserSchema.pre("save", async function (next) {
