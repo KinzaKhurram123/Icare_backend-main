@@ -8,23 +8,22 @@ const swaggerSpec = require("./swagger");
 
 dotenv.config();
 connectDB();
-
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/doctors", require("./routes/doctorRoutes"));
-app.use("/api/paitents", require("./routes/patientsRoutes"));
-app.use("/api/pharmacy", require("./routes/pharmacyRoutes"));
-app.use("/api/appointments", require("./routes/appointmentsRoutes"));
+
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/doctors', require('./routes/doctorRoutes'));
+app.use('/api/paitents', require('./routes/patientsRoutes'));
+app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
+app.use('/api/appointments', require('./routes/appointmentsRoutes'));
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () =>
-  console.log(`Server running on port ${PORT}`),
-);
+app.listen(PORT, '0.0.0.0'() => console.log(`Server running on port ${PORT}`));
+
