@@ -9,7 +9,6 @@ const { type } = require('os');
 const { json } = require('body-parser');
 const { error } = require('console');
 const nodemailer = require('nodemailer');
-module.exports = app;
 
 const app = express()
 app.use(express.json())
@@ -17,4 +16,7 @@ app.use(cors())
 
 mongoose.connect(process.env.MONGO_URI, {
 }).then(() => console.log('MongoDB connected')).catch(err => console.log('MongoDB Connection Error:', err))
+
+
+module.exports = app;
 
