@@ -6,6 +6,8 @@ exports.AddDoctorDetails = async (req, res) => {
         const userId = req.user.id;
         const {
             specialization,
+            consultationType,
+            languages,
             degrees,
             experience,
             licenseNumber,
@@ -21,6 +23,8 @@ exports.AddDoctorDetails = async (req, res) => {
         const existingProfile = await Doctor.findOne({ user: userId });
         if (existingProfile) {
             existingProfile.specialization = specialization;
+            existingProfile.consultationType = consultationType;
+            existingProfile.languages = languages;
             existingProfile.degrees = degrees;
             existingProfile.experience = experience;
             existingProfile.licenseNumber = licenseNumber;
@@ -39,6 +43,8 @@ exports.AddDoctorDetails = async (req, res) => {
         const doctor = await Doctor.create({
             user: userId,
             specialization,
+            consultationType,
+            languages,
             degrees,
             experience,
             licenseNumber,
@@ -57,7 +63,7 @@ exports.AddDoctorDetails = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
+ 
 
 exports.GetAllDoctors = async (req, res) => {
     try {
@@ -66,5 +72,73 @@ exports.GetAllDoctors = async (req, res) => {
     } catch (error) {
         console.error('Get All Doctors Error:', error);
         res.status(500).json({ message: 'Server error while fetching doctors' });
+    }
+};
+
+exports.FilterDoctors = async (req, res) => {
+    try {
+        const {
+            specialization,
+            consultationType,
+            location,
+            language,
+            languages,
+            day,
+            time,
+            minRating
+        } = req.query;
+        const query = {};
+        if (specialization) {
+            query.specialization = { $regex: specialization, $options: "i" };
+        }
+        if (consultationType) {
+            query.consultationType = consultationType;
+        }
+        if (location) {
+            query.clinicAddress = { $regex: location, $options: "i" };
+        }
+        let langs = [];
+        if (languages) {
+            langs = String(languages).split(",").map((s) => s.trim()).filter(Boolean);
+        } else if (language) {
+            langs = [String(language).trim()];
+        }
+        if (langs.length > 0) {
+            query.languages = { $in: langs };
+        }
+        if (day) {
+            query.availableDays = { $in: [day] };
+        }
+        const docs = await Doctor.find(query).populate("user", "name email role");
+        const parseTime = (t) => {
+            if (!t) return null;
+            const parts = String(t).split(":");
+            if (parts.length < 2) return null;
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            if (Number.isNaN(h) || Number.isNaN(m)) return null;
+            return h * 60 + m;
+        };
+        const targetMinutes = time ? parseTime(time) : null;
+        const minR = minRating ? Number(minRating) : null;
+        const filtered = docs.filter((d) => {
+            let ok = true;
+            if (targetMinutes !== null) {
+                const start = d.availableTime && d.availableTime.start ? parseTime(d.availableTime.start) : null;
+                const end = d.availableTime && d.availableTime.end ? parseTime(d.availableTime.end) : null;
+                if (start === null || end === null) ok = false;
+                else ok = ok && targetMinutes >= start && targetMinutes <= end;
+            }
+            if (minR !== null && Array.isArray(d.ratings)) {
+                const arr = d.ratings;
+                const avg = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+                ok = ok && avg >= minR;
+            }
+            return ok;
+        });
+        res.status(200).json({ success: true, count: filtered.length, doctors: filtered });
+    } catch (error) {
+        console.error("FilterDoctors Error:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
 };
