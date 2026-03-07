@@ -10,7 +10,10 @@ const appointmentSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'confirmed', 'cancelled', 'completed'],
         default: 'pending'
-    }
+    },
+    cancellationReason: { type: String },
+    cancelledBy: { type: String, enum: ['Doctor', 'Patient'] },
+    cancelledAt: { type: Date }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

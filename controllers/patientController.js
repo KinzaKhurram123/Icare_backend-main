@@ -79,3 +79,31 @@ exports.getAllPaitent = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 }
+
+exports.getPatientById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const patient = await Patient.findById(id).populate('user', 'name email role phoneNumber createdAt');
+        if (!patient) {
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+        res.status(200).json({ success: true, patient });
+    } catch (error) {
+        console.error("Get Patient By Id Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+exports.getMyPatientProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const patient = await Patient.findOne({ user: userId }).populate('user', 'name email role phoneNumber createdAt');
+        if (!patient) {
+            return res.status(404).json({ message: 'Patient profile not found' });
+        }
+        res.status(200).json({ success: true, patient });
+    } catch (error) {
+        console.error("Get My Patient Profile Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
