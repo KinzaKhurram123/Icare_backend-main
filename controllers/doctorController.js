@@ -75,6 +75,49 @@ exports.GetAllDoctors = async (req, res) => {
     }
 };
 
+exports.GetDoctorById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doctor = await Doctor.findById(id).populate('user', 'name email role phoneNumber createdAt');
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+        res.status(200).json({ success: true, doctor });
+    } catch (error) {
+        console.error('GetDoctorById Error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+exports.AddDoctorReview = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rating, review } = req.body;
+        const role = req.user.role;
+        if (role !== 'Patient') {
+            return res.status(403).json({ message: 'Only patients can add reviews' });
+        }
+        const doc = await Doctor.findById(id);
+        if (!doc) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+        if (rating !== undefined) {
+            const r = Number(rating);
+            if (Number.isNaN(r) || r < 1 || r > 5) {
+                return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+            }
+            doc.ratings = Array.isArray(doc.ratings) ? [...doc.ratings, r] : [r];
+        }
+        if (review) {
+            doc.reviews = Array.isArray(doc.reviews) ? [...doc.reviews, String(review)] : [String(review)];
+        }
+        await doc.save();
+        res.status(200).json({ success: true, doctor: doc });
+    } catch (error) {
+        console.error('AddDoctorReview Error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 exports.FilterDoctors = async (req, res) => {
     try {
         const {

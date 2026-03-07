@@ -75,3 +75,17 @@ exports.getAllPharmacy = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+exports.getPharmacyById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pharmacy = await Pharmacy.findById(id).populate('user', 'name email role phoneNumber createdAt');
+        if (!pharmacy) {
+            return res.status(404).json({ message: 'Pharmacy not found' });
+        }
+        res.status(200).json({ success: true, pharmacy });
+    } catch (error) {
+        console.error("Get Pharmacy By Id Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

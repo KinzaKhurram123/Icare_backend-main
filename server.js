@@ -17,7 +17,17 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/doctors", require("./routes/doctorRoutes"));
 app.use("/api/paitents", require("./routes/patientsRoutes"));
 app.use("/api/pharmacy", require("./routes/pharmacyRoutes"));
+app.use("/api/pharmacy/products", require("./routes/pharmacyProductsRoutes"));
+app.use("/api/pharmacy/orders", require("./routes/pharmacyOrdersRoutes"));
+app.use("/api/cart", require("./routes/cartRoutes"));
 app.use("/api/appointments", require("./routes/appointmentsRoutes"));
+app.use("/api/reminders", require("./routes/remindersRoutes"));
+app.use("/api/laboratories", require("./routes/laboratoryRoutes"));
+app.use("/api/instructors", require("./routes/instructorRoutes"));
+app.use("/api/instructors/courses", require("./routes/instructorCoursesRoutes"));
+app.use("/api/instructors/precautions", require("./routes/instructorPrecautionsRoutes"));
+app.use("/api/students", require("./routes/studentRoutes"));
+app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
