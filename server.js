@@ -19,11 +19,13 @@ app.use('/api/doctors', require('./routes/doctorRoutes'));
 app.use('/api/paitents', require('./routes/patientsRoutes'));
 app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
 app.use('/api/appointments', require('./routes/appointmentsRoutes'));
+app.use('/api/medical-records', require('./routes/medicalRecordRoutes'));
+app.use('/api/test', require('./routes/testRoutes')); // Test endpoints
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0'() => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
 
