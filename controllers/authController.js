@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Doctor = require("../models/doctor");
 const generateToken = require("../utils/generateToken");
 const bcrypt = require("bcryptjs");
 
@@ -19,6 +20,39 @@ exports.registerUser = async (req, res) => {
     });
 
     if (user) {
+      console.log('✅ NEW USER REGISTERED:');
+      console.log('   Name:', user.name);
+      console.log('   Email:', user.email);
+      console.log('   Role:', user.role);
+      console.log('   Phone:', user.phoneNumber);
+      console.log('   ID:', user._id);
+      console.log('   Created:', new Date().toLocaleString());
+
+      // Automatically create Doctor profile if role is Doctor
+      if (role === 'Doctor') {
+        const doctorProfile = await Doctor.create({
+          user: user._id,
+          specialization: 'General Practitioner',
+          degrees: [],
+          experience: '',
+          licenseNumber: '',
+          clinicName: '',
+          clinicAddress: '',
+          availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          availableTime: {
+            start: '09:00 AM',
+            end: '05:00 PM'
+          },
+          isApproved: true,
+          ratings: [],
+          reviews: []
+        });
+        console.log('   ✅ Doctor profile auto-created');
+        console.log('   Doctor ID:', doctorProfile._id);
+      }
+      
+      console.log('-----------------------------------');
+      
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -31,7 +65,7 @@ exports.registerUser = async (req, res) => {
       res.status(400).json({ message: "Invalid user data" });
     }
   } catch (error) {
-    console.error(error);
+    console.error('❌ REGISTRATION ERROR:', error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -41,6 +75,13 @@ exports.loginUser = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (user && (await bcrypt.compare(password, user.password))) {
+    console.log('✅ USER LOGGED IN:');
+    console.log('   Name:', user.name);
+    console.log('   Email:', user.email);
+    console.log('   Role:', user.role);
+    console.log('   Time:', new Date().toLocaleString());
+    console.log('-----------------------------------');
+    
     res.json({
       _id: user.id,
       name: user.name,
@@ -48,6 +89,7 @@ exports.loginUser = async (req, res) => {
       token: generateToken(user.id),
     });
   } else {
+    console.log('❌ LOGIN FAILED:', email);
     res.status(401).json({ message: "Invalid credentials" });
   }
 };
@@ -114,16 +156,21 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Invalid Email" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
+    // Set the new password (will be hashed by pre-save hook)
+    user.password = password;
     user.resetOTP = undefined;
     user.otpExpiry = undefined;
 
     await user.save();
 
+    console.log('✅ PASSWORD RESET SUCCESSFUL:');
+    console.log('   Email:', user.email);
+    console.log('   Time:', new Date().toLocaleString());
+    console.log('-----------------------------------');
+
     return res.json({ message: "Reset Password Successfully" });
   } catch (error) {
-    console.error("Error in checkCode:", error);
+    console.error("Error in resetPassword:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };

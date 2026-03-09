@@ -28,6 +28,8 @@ app.use("/api/instructors/courses", require("./routes/instructorCoursesRoutes"))
 app.use("/api/instructors/precautions", require("./routes/instructorPrecautionsRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
+app.use("/api/medical-records", require("./routes/medicalRecordRoutes"));
+app.use("/api/test", require("./routes/testRoutes"));
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
@@ -35,5 +37,5 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () =>
-  console.log(`Server running on port ${PORT}`),
+  console.log(`Server running on port ${PORT}`)
 );
