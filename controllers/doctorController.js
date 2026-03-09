@@ -205,3 +205,77 @@ exports.FilterDoctors = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+// Update doctor availability
+exports.UpdateAvailability = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { availableDays, availableTime, unavailableDates } = req.body;
+
+        console.log("📋 Updating availability for doctor:", userId);
+
+        const doctor = await Doctor.findOne({ user: userId });
+        if (!doctor) {
+            return res.status(404).json({
+                success: false,
+                message: 'Doctor profile not found'
+            });
+        }
+
+        if (availableDays) doctor.availableDays = availableDays;
+        if (availableTime) doctor.availableTime = availableTime;
+        if (unavailableDates !== undefined) doctor.unavailableDates = unavailableDates;
+
+        await doctor.save();
+
+        console.log("✅ Availability updated successfully");
+
+        res.status(200).json({
+            success: true,
+            message: 'Availability updated successfully',
+            doctor
+        });
+    } catch (error) {
+        console.error("❌ UpdateAvailability Error:", error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Get doctor availability
+exports.GetAvailability = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const doctor = await Doctor.findOne({ user: userId });
+        
+        // Return default values if doctor profile doesn't exist yet
+        if (!doctor) {
+            return res.status(200).json({
+                success: true,
+                availability: {
+                    availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                    availableTime: { start: '09:00', end: '17:00' },
+                    unavailableDates: []
+                }
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            availability: {
+                availableDays: doctor.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                availableTime: doctor.availableTime || { start: '09:00', end: '17:00' },
+                unavailableDates: doctor.unavailableDates || []
+            }
+        });
+    } catch (error) {
+        console.error("❌ GetAvailability Error:", error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};

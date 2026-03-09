@@ -15,6 +15,7 @@ const doctorSchema = new mongoose.Schema({
     start: String,
     end: String,
   },
+  unavailableDates: [Date],
   isApproved: { type: Boolean, default: false },
   ratings: [Number],
   reviews: [String],
