@@ -6,9 +6,9 @@ const router = express.Router();
 
 router.post('/', protect, createFromCart);
 router.get('/my', protect, getMyOrders);
+router.get('/pharmacy/list', protect, getPharmacyOrders);
 router.get('/:id', protect, getOrderById);
 router.put('/:id/status', protect, updateOrderStatus);
 router.put('/:id/cancel', protect, cancelOrder);
-router.get('/pharmacy/list', protect, getPharmacyOrders);
 
 module.exports = router;
