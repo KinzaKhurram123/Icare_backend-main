@@ -93,7 +93,6 @@ exports.listMedicines = async (req, res) => {
         return d <= rad;
       });
       if (sort === 'distance') {
-        // lightweight approximate sort by distance
         meds.sort((a,b) => {
           const [alng, alat] = a.pharmacy.location.coordinates;
           const [blng, blat] = b.pharmacy.location.coordinates;

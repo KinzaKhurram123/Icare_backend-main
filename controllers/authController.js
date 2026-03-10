@@ -28,7 +28,6 @@ exports.registerUser = async (req, res) => {
       console.log('   ID:', user._id);
       console.log('   Created:', new Date().toLocaleString());
 
-      // Automatically create Doctor profile if role is Doctor
       if (role === 'Doctor') {
         const doctorProfile = await Doctor.create({
           user: user._id,
@@ -156,7 +155,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Invalid Email" });
     }
 
-    // Set the new password (will be hashed by pre-save hook)
     user.password = password;
     user.resetOTP = undefined;
     user.otpExpiry = undefined;

@@ -5,7 +5,6 @@ const { AddPaitentsDetails, getAllPaitent, getPatientById, getMyPatientProfile }
 const router = express.Router();
 
 router.post('/add_patient_details', protect, AddPaitentsDetails)
-// Backward-compat alias for typo'd path used by clients
 router.post('/add_paitent_details', protect, AddPaitentsDetails)
 router.get('/get_all_patients', getAllPaitent)
 router.get('/me', protect, getMyPatientProfile)

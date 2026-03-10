@@ -1,7 +1,6 @@
 const errorHandler = (err, req, res, next) => {
     console.error("❌ Error:", err);
 
-    // Default values
     const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
 
     res.status(statusCode).json({
