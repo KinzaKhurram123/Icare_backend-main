@@ -24,7 +24,6 @@ router.get('/filter', FilterLaboratories);
 router.get('/profile', protect, getLaboratoryProfile);
 router.get('/bookings/my', protect, getMyBookings);
 router.post('/:id/reviews', protect, AddLaboratoryReview);
-// bookings
 router.post('/:labId/bookings', protect, createBooking);
 router.get('/:labId/bookings', protect, getLabBookings);
 router.get('/bookings/:id', protect, getBookingById);

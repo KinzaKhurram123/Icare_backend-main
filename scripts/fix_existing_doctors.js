@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/icare')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => {
@@ -16,13 +15,11 @@ async function fixExistingDoctors() {
     try {
         console.log('\n🔧 Fixing existing doctor accounts...\n');
 
-        // Find all users with Doctor role
         const doctorUsers = await User.find({ role: 'Doctor' });
         
         console.log(`Found ${doctorUsers.length} doctor user(s)\n`);
 
         for (const user of doctorUsers) {
-            // Check if doctor profile exists
             const existingProfile = await Doctor.findOne({ user: user._id });
             
             if (existingProfile) {
@@ -30,7 +27,6 @@ async function fixExistingDoctors() {
             } else {
                 console.log(`⚠️  ${user.name} (${user.email}) - Creating profile...`);
                 
-                // Create doctor profile
                 await Doctor.create({
                     user: user._id,
                     specialization: 'General Practitioner',
@@ -66,6 +62,4 @@ async function fixExistingDoctors() {
         process.exit(1);
     }
 }
-
-// Wait a bit for connection to establish
 setTimeout(fixExistingDoctors, 1000);

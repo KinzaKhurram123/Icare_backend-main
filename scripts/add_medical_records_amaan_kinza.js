@@ -11,7 +11,6 @@ const addMedicalRecords = async () => {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Connected to MongoDB');
 
-        // Find specific doctor and patient
         const doctor = await User.findOne({ email: 'amaan@gmail.com' });
         const patient = await User.findOne({ email: 'kinza@gmail.com' });
 
@@ -28,7 +27,6 @@ const addMedicalRecords = async () => {
         console.log(`\n👨‍⚕️ Doctor: ${doctor.name} (${doctor.email})`);
         console.log(`👤 Patient: ${patient.name} (${patient.email})`);
 
-        // Find an appointment between them (optional)
         const appointment = await Appointment.findOne({
             doctor: doctor._id,
             patient: patient._id
@@ -38,7 +36,6 @@ const addMedicalRecords = async () => {
             console.log(`📅 Found appointment: ${appointment._id}`);
         }
 
-        // Create sample medical records
         const sampleRecords = [
             {
                 patient: patient._id,

@@ -14,7 +14,6 @@ exports.bookAppointment = async (req, res) => {
         console.log('Date:', date);
         console.log('Time Slot:', timeSlot);
 
-        // Find the doctor document to get the user ID
         const doctorDoc = await Doctor.findById(doctorId).populate('user');
         console.log("🚀 ~ doctorDoc:", doctorDoc);
         
@@ -98,7 +97,6 @@ exports.updateAppointmentStatus = async (req, res) => {
             return res.status(404).json({ message: 'Appointment not found' });
         }
 
-        // Check if user is the doctor for this appointment
         if (appointment.doctor.toString() !== userId.toString()) {
             return res.status(403).json({ message: 'Not authorized to update this appointment' });
         }

@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/icare')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
@@ -13,8 +12,6 @@ const Doctor = require('../models/doctor');
 async function addTestDoctor() {
     try {
         console.log('\n🏥 Adding Test Doctor Account...\n');
-
-        // Check if doctor already exists
         const existingUser = await User.findOne({ email: 'testdoctor@gmail.com' });
         
         if (existingUser) {
@@ -22,8 +19,6 @@ async function addTestDoctor() {
             console.log('📧 Email: testdoctor@gmail.com');
             console.log('🔑 Password: doctor123');
             console.log('\nYou can login with these credentials.');
-            
-            // Check if doctor profile exists
             const doctorProfile = await Doctor.findOne({ user: existingUser._id });
             if (doctorProfile) {
                 console.log('✅ Doctor profile exists');
@@ -49,8 +44,6 @@ async function addTestDoctor() {
             
             process.exit(0);
         }
-
-        // Create new doctor user
         const hashedPassword = await bcrypt.hash('doctor123', 10);
         
         const newUser = await User.create({
@@ -64,8 +57,6 @@ async function addTestDoctor() {
         console.log('✅ Doctor user created');
         console.log('📧 Email: testdoctor@gmail.com');
         console.log('🔑 Password: doctor123');
-
-        // Create doctor profile
         const doctorProfile = await Doctor.create({
             user: newUser._id,
             specialization: 'General Practitioner',
@@ -97,7 +88,6 @@ async function addTestDoctor() {
     }
 }
 
-// Also check existing doctors
 async function checkExistingDoctors() {
     try {
         console.log('\n📋 Checking existing doctor accounts...\n');

@@ -1,9 +1,8 @@
 const User = require("../models/user");
 
-// Get all users (for testing only)
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password'); // Exclude password
+    const users = await User.find().select('-password'); 
     
     console.log(`📋 Fetched ${users.length} users from database`);
     
@@ -21,7 +20,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user count by role
 exports.getUserStats = async (req, res) => {
   try {
     const stats = await User.aggregate([
@@ -52,7 +50,6 @@ exports.getUserStats = async (req, res) => {
 const Doctor = require("../models/doctor");
 const bcrypt = require("bcryptjs");
 
-// Get all doctors with user info (for testing)
 exports.getAllDoctorsTest = async (req, res) => {
   try {
     const doctors = await Doctor.find().populate('user', 'name email role phoneNumber');
@@ -73,10 +70,8 @@ exports.getAllDoctorsTest = async (req, res) => {
   }
 };
 
-// Create sample doctors for testing
 exports.createSampleDoctors = async (req, res) => {
   try {
-    // First, create doctor users
     const doctorUsers = [
       {
         name: "Dr. Sarah Johnson",
@@ -121,7 +116,6 @@ exports.createSampleDoctors = async (req, res) => {
       }
     }
 
-    // Now create doctor profiles
     const doctorProfiles = [
       {
         user: createdUsers[0]._id,
@@ -210,12 +204,10 @@ exports.createSampleDoctors = async (req, res) => {
   }
 };
 
-// Fix existing doctor users who don't have doctor profiles
 exports.fixDoctorProfiles = async (req, res) => {
     try {
         console.log('🔧 Fixing doctor profiles...');
         
-        // Find all users with Doctor role
         const doctorUsers = await User.find({ role: 'Doctor' });
         
         let fixed = 0;
