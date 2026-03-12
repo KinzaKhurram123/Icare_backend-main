@@ -1,4 +1,4 @@
-const ChatMessage = require("../models/ChatMessage");
+const ChatMessage = require("../models/chatmessage");
 const pusher = require("../config/pusher.config");
 
 exports.sendMessage = async (req, res) => {
