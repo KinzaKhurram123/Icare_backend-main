@@ -18,13 +18,9 @@ exports.createBooking = async (req, res) => {
       date,
       time,
       homeSample,
-<<<<<<< HEAD
       price,
       totalAmount,
       prescription
-=======
-      prescription,
->>>>>>> 3f2a60c08bb737533fddb4792f2aba9ddcb2d562
     } = req.body;
     const patientId = req.user._id;
     const lab = await Laboratory.findById(labId);
