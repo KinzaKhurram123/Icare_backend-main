@@ -20,6 +20,7 @@ exports.AddLaboratoryDetails = async (req, res) => {
       title,
       description,
       testsOffered,
+      availableTests,
       homeSampleAvailable,
     } = req.body;
     const existingProfile = await Laboratory.findOne({ user: userId }).populate(
@@ -47,7 +48,8 @@ exports.AddLaboratoryDetails = async (req, res) => {
         };
       }
       existingProfile.workingHours = workingHours || openHours || existingProfile.workingHours;
-      existingProfile.testsOffered = testsOffered;
+      existingProfile.testsOffered = testsOffered || existingProfile.testsOffered;
+      existingProfile.availableTests = availableTests || existingProfile.availableTests;
       existingProfile.title = title ?? existingProfile.title;
       existingProfile.description = description ?? existingProfile.description;
       if (typeof homeSampleAvailable === "boolean")
@@ -74,6 +76,7 @@ exports.AddLaboratoryDetails = async (req, res) => {
       title,
       description,
       testsOffered: testsOffered ?? [],
+      availableTests: availableTests ?? [],
       homeSampleAvailable: homeSampleAvailable ?? false,
     });
     const full = await Laboratory.findById(lab._id).populate(
@@ -220,6 +223,23 @@ exports.AddLaboratoryReview = async (req, res) => {
     res.status(200).json({ success: true, laboratory: lab });
   } catch (error) {
     console.error("Add Laboratory Review Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getLaboratoryProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const lab = await Laboratory.findOne({ user: userId }).populate(
+      "user",
+      "name email phoneNumber role createdAt"
+    );
+    if (!lab) {
+      return res.status(404).json({ message: "Laboratory profile not found" });
+    }
+    res.status(200).json({ success: true, laboratory: lab });
+  } catch (error) {
+    console.error("Get Laboratory Profile Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

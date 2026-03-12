@@ -18,6 +18,8 @@ exports.createBooking = async (req, res) => {
       date,
       time,
       homeSample,
+      price,
+      totalAmount,
       prescription
     } = req.body;
     const patientId = req.user._id;
@@ -35,6 +37,7 @@ exports.createBooking = async (req, res) => {
       date,
       time,
       homeSample: !!homeSample,
+      price: price || totalAmount || 0,
       prescription: prescription || null,
       bookingNumber: makeBookingNumber()
     });
@@ -131,7 +134,7 @@ exports.updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
-    const { testName, contactName, contactPhone, contactLocation, age, date, time, homeSample, status, prescription } = req.body;
+    const { testName, contactName, contactPhone, contactLocation, age, date, time, homeSample, status, prescription, resultNotes, reportUrl } = req.body;
     const booking = await LabBooking.findById(id).populate('laboratory', 'user');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     const isLab = booking.laboratory.user.toString() === userId.toString();
@@ -148,6 +151,8 @@ exports.updateBooking = async (req, res) => {
     if (time !== undefined) update.time = time;
     if (homeSample !== undefined) update.homeSample = homeSample;
     if (prescription !== undefined) update.prescription = prescription;
+    if (resultNotes !== undefined) update.resultNotes = resultNotes;
+    if (reportUrl !== undefined) update.reportUrl = reportUrl;
     if (status !== undefined) {
       if (isLab) {
         update.status = status;

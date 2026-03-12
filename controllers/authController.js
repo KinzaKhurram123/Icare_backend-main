@@ -1,5 +1,7 @@
 const User = require("../models/user");
 const Doctor = require("../models/doctor");
+const Pharmacy = require("../models/pharmacy");
+const Laboratory = require("../models/laboratory");
 const generateToken = require("../utils/generateToken");
 const bcrypt = require("bcryptjs");
 
@@ -49,6 +51,48 @@ exports.registerUser = async (req, res) => {
         });
         console.log('   ✅ Doctor profile auto-created');
         console.log('   Doctor ID:', doctorProfile._id);
+      }
+
+      // Automatically create Pharmacy profile if role is Pharmacy
+      if (role === 'Pharmacy') {
+        const pharmacyProfile = await Pharmacy.create({
+          user: user._id,
+          ownerName: user.name,
+          isApproved: true,
+          deliveryAvailable: true,
+          openHours: {
+            from: '09:00 AM',
+            to: '09:00 PM'
+          },
+          location: {
+            type: 'Point',
+            coordinates: [0, 0]
+          }
+        });
+        console.log('   ✅ Pharmacy profile auto-created');
+        console.log('   Pharmacy ID:', pharmacyProfile._id);
+      }
+
+      // Automatically create Laboratory profile if role is Laboratory
+      if (role === 'Laboratory') {
+        const labProfile = await Laboratory.create({
+          user: user._id,
+          labName: `${user.name} Laboratory`,
+          ownerName: user.name,
+          isApproved: true,
+          homeSampleAvailable: true,
+          workingHours: {
+            from: '08:00 AM',
+            to: '08:00 PM'
+          },
+          location: {
+            type: 'Point',
+            coordinates: [0, 0]
+          },
+          testsOffered: []
+        });
+        console.log('   ✅ Laboratory profile auto-created');
+        console.log('   Laboratory ID:', labProfile._id);
       }
       
       console.log('-----------------------------------');

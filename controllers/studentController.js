@@ -53,7 +53,7 @@ exports.AddStudentDetails = async (req, res) => {
             preferences: preferences ?? [],
             isVerified: isVerified ?? false
         });
-        const full = await Student.findById(student._id).populate('user', 'name email role phoneNunber createdAt');
+        const full = await Student.findById(student._id).populate('user', 'name email role phoneNumber createdAt');
         return res.status(201).json({
             message: 'Student created successfully',
             student: full,

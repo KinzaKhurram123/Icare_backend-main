@@ -28,6 +28,10 @@ const laboratorySchema = new mongoose.Schema({
   title: String,
   description: String,
   testsOffered: [String],
+  availableTests: [{
+    name: { type: String, required: true },
+    price: { type: Number, default: 0 }
+  }],
   homeSampleAvailable: { type: Boolean, default: false },
   ratings: [Number],
   reviews: [String]

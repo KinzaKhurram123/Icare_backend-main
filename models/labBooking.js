@@ -16,7 +16,11 @@ const labBookingSchema = new mongoose.Schema({
   cancellationReason: String,
   cancelledBy: { type: String, enum: ['Laboratory', 'Patient'] },
   cancelledAt: Date,
-  bookingNumber: { type: String, unique: true }
+  bookingNumber: { type: String, unique: true },
+  price: { type: Number, default: 0 },
+  paymentMethod: { type: String, default: 'Cash' },
+  resultNotes: { type: String, default: '' },
+  reportUrl: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('LabBooking', labBookingSchema);

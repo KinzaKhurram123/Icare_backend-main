@@ -53,7 +53,7 @@ exports.AddInstructorDetails = async (req, res) => {
             availabilityTime,
             isVerified: isVerified ?? false
         });
-        const full = await Instructor.findById(instructor._id).populate('user', 'name email role phoneNunber createdAt');
+        const full = await Instructor.findById(instructor._id).populate('user', 'name email role phoneNumber createdAt');
         return res.status(201).json({
             message: 'Instructor created successfully',
             instructor: full,

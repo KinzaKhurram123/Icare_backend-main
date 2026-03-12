@@ -11,6 +11,7 @@ connectDB();
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use('/uploads', express.static('uploads'));
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
@@ -26,12 +27,13 @@ app.use("/api/laboratories", require("./routes/laboratoryRoutes"));
 app.use("/api/instructors", require("./routes/instructorRoutes"));
 app.use("/api/instructors/courses", require("./routes/instructorCoursesRoutes"));
 app.use("/api/instructors/precautions", require("./routes/instructorPrecautionsRoutes"));
-app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
+app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/medical-records", require("./routes/medicalRecordRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/prescription-templates", require("./routes/prescriptionTemplateRoutes"));
 app.use("/api/test", require("./routes/testRoutes"));
+app.use("/api/tasks", require("./routes/taskRoutes"));
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 

@@ -2,14 +2,19 @@ const InstructorCourse = require('../models/instructorCourse');
 const StudentCourseEnrollment = require('../models/studentCourseEnrollment');
 const Instructor = require('../models/instructor');
 
-const certNumber = () => `CERT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
+const certNumber = () => `CERT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
 exports.listPublicCourses = async (req, res) => {
   try {
     const { q } = req.query;
     const filter = { visibility: 'public' };
     if (q) filter.title = { $regex: q, $options: 'i' };
-    const courses = await InstructorCourse.find(filter).sort({ createdAt: -1 });
+    const courses = await InstructorCourse.find(filter)
+      .populate({
+        path: 'instructor',
+        populate: { path: 'user', select: 'name' }
+      })
+      .sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: courses.length, courses });
   } catch (error) {
     console.error('List Public Courses Error:', error);
@@ -20,7 +25,10 @@ exports.listPublicCourses = async (req, res) => {
 exports.getCourseDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await InstructorCourse.findById(id).populate('instructor', 'user');
+    const course = await InstructorCourse.findById(id).populate({
+      path: 'instructor',
+      populate: { path: 'user', select: 'name' }
+    });
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.status(200).json({ success: true, course });
   } catch (error) {
@@ -61,7 +69,13 @@ exports.buyCourse = async (req, res) => {
 exports.myPurchases = async (req, res) => {
   try {
     const userId = req.user._id;
-    const items = await StudentCourseEnrollment.find({ user: userId }).populate('course');
+    const items = await StudentCourseEnrollment.find({ user: userId }).populate({
+      path: 'course',
+      populate: {
+        path: 'instructor',
+        populate: { path: 'user', select: 'name' }
+      }
+    });
     res.status(200).json({ success: true, count: items.length, items });
   } catch (error) {
     console.error('My Purchases Error:', error);
