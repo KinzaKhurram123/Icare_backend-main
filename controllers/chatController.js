@@ -117,3 +117,81 @@ exports.typingIndicator = async (req, res) => {
     });
   }
 };
+
+exports.getConversations = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+
+    // Get all unique users the current user has chatted with
+    const conversations = await ChatMessage.aggregate([
+      {
+        $match: {
+          $or: [
+            { sender: currentUserId },
+            { receiver: currentUserId }
+          ]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ['$sender', currentUserId] },
+              '$receiver',
+              '$sender'
+            ]
+          },
+          lastMessage: { $first: '$message' },
+          lastMessageTime: { $first: '$createdAt' },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$receiver', currentUserId] },
+                    { $eq: ['$read', false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $sort: { lastMessageTime: -1 }
+      }
+    ]);
+
+    // Populate user details
+    const User = require('../models/user');
+    const conversationsWithUsers = await Promise.all(
+      conversations.map(async (conv) => {
+        const user = await User.findById(conv._id).select('name email profileImage role');
+        return {
+          userId: conv._id,
+          user: user,
+          lastMessage: conv.lastMessage,
+          lastMessageTime: conv.lastMessageTime,
+          unreadCount: conv.unreadCount
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: conversationsWithUsers.filter(c => c.user !== null)
+    });
+  } catch (error) {
+    console.error("Get conversations error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch conversations",
+      error: error.message,
+    });
+  }
+};

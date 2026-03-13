@@ -95,7 +95,7 @@ async function addTestPharmacies() {
           email: pharmacyData.email,
           password: pharmacyData.password,
           phoneNumber: pharmacyData.phoneNumber,
-          role: 'pharmacist',
+          role: 'Pharmacy',
         });
         console.log(`✅ Created user: ${user.email}`);
       } else {

@@ -13,7 +13,7 @@ const router = express.Router();
 router.post('/create', protect, createMedicalRecord);
 router.get('/patient/:patientId', protect, getPatientRecords);
 router.get('/doctor', protect, getDoctorRecords);
-router.get('/:recordId', protect, getRecordById);
 router.put('/:recordId', protect, updateMedicalRecord);
+router.get('/:recordId', protect, getRecordById);
 
 module.exports = router;

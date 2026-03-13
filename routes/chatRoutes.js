@@ -9,6 +9,7 @@ const {
   getChatHistory,
   markAsRead,
   typingIndicator,
+  getConversations,
 } = require("../controllers/chatController");
 
 router.post("/pusher/auth", pusherAuth, (req, res) => {
@@ -41,6 +42,7 @@ router.post("/pusher/auth", pusherAuth, (req, res) => {
 
 router.use(protect);
 
+router.get("/conversations", getConversations);
 router.post("/send", sendMessage);
 router.get("/history/:userId", getChatHistory);
 router.put("/read", markAsRead);
