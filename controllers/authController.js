@@ -64,10 +64,11 @@ exports.loginUser = async (req, res) => {
     console.log("-----------------------------------");
 
     res.json({
-      _id: user.id,
+      _id: user._id,
       name: user.name,
       email: user.email,
-      token: generateToken(user.id),
+      role: user.role,
+      token: generateToken(user._id),
     });
   } else {
     console.log("❌ LOGIN FAILED:", email);

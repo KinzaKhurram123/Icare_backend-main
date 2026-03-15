@@ -33,17 +33,21 @@ exports.sendMessage = async (req, res) => {
     await newMessage.populate("sender", "name email profileImage");
     await newMessage.populate("receiver", "name email profileImage");
 
-    await pusher.trigger(`private-chat-${receiverId}`, "new-message", {
-      message: newMessage,
-      sender: senderId,
-      timestamp: new Date().toISOString(),
-    });
-
-    await pusher.trigger(`private-chat-${senderId}`, "message-sent", {
-      message: newMessage,
-      receiver: receiverId,
-      timestamp: new Date().toISOString(),
-    });
+    // Pusher is non-critical — don't let it crash the message send
+    try {
+      await pusher.trigger(`private-chat-${receiverId}`, "new-message", {
+        message: newMessage,
+        sender: senderId,
+        timestamp: new Date().toISOString(),
+      });
+      await pusher.trigger(`private-chat-${senderId}`, "message-sent", {
+        message: newMessage,
+        receiver: receiverId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger failed (non-critical):", pusherError.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -130,10 +134,14 @@ exports.markAsRead = async (req, res) => {
 
     console.log(`Marked ${result.modifiedCount} messages as read`);
 
-    await pusher.trigger(`private-chat-${senderId}`, "messages-read", {
-      reader: currentUserId,
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      await pusher.trigger(`private-chat-${senderId}`, "messages-read", {
+        reader: currentUserId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger failed (non-critical):", pusherError.message);
+    }
 
     res.json({
       success: true,
@@ -168,11 +176,15 @@ exports.typingIndicator = async (req, res) => {
       });
     }
 
-    await pusher.trigger(`private-chat-${receiverId}`, "typing-indicator", {
-      user: senderId,
-      isTyping: isTyping || false,
-      timestamp: Date.now(),
-    });
+    try {
+      await pusher.trigger(`private-chat-${receiverId}`, "typing-indicator", {
+        user: senderId,
+        isTyping: isTyping || false,
+        timestamp: Date.now(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger failed (non-critical):", pusherError.message);
+    }
 
     res.json({
       success: true,
@@ -191,25 +203,18 @@ exports.typingIndicator = async (req, res) => {
 exports.getConversations = async (req, res) => {
   try {
     console.log("getConversations called");
-    console.log("req.user:", req.user);
 
     if (!req.user) {
-      console.log("req.user is null! Auth middleware failed?");
       return res.status(401).json({
         success: false,
         message: "User not authenticated - Please login again",
       });
     }
 
-    const currentUserId = req.user._id ? req.user._id.toString() : req.user.id;
-
-    if (!currentUserId) {
-      console.log("No user ID found in req.user:", req.user);
-      return res.status(400).json({
-        success: false,
-        message: "User ID not found in token",
-      });
-    }
+    const mongoose = require("mongoose");
+    const currentUserId = new mongoose.Types.ObjectId(
+      req.user._id ? req.user._id.toString() : req.user.id
+    );
 
     console.log("Current User ID:", currentUserId);
 
