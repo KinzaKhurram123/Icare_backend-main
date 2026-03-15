@@ -3,14 +3,31 @@ const pusher = require("../config/pusher.config");
 
 exports.sendMessage = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
     const { receiverId, message, attachments } = req.body;
-    const senderId = req.user.id;
+
+    if (!receiverId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver ID and message are required",
+      });
+    }
+
+    const senderId = req.user._id || req.user.id;
+    console.log("Sending message from:", senderId, "to:", receiverId);
 
     const newMessage = await ChatMessage.create({
       sender: senderId,
       receiver: receiverId,
       message,
       attachments: attachments || [],
+      read: false,
     });
 
     await newMessage.populate("sender", "name email profileImage");
@@ -44,8 +61,24 @@ exports.sendMessage = async (req, res) => {
 
 exports.getChatHistory = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
     const { userId } = req.params;
-    const currentUserId = req.user.id;
+    const currentUserId = req.user._id || req.user.id;
+
+    console.log("Getting chat history for:", currentUserId, "with:", userId);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
 
     const messages = await ChatMessage.find({
       $or: [
@@ -62,6 +95,7 @@ exports.getChatHistory = async (req, res) => {
       data: messages,
     });
   } catch (error) {
+    console.error("Get chat history error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch chat history",
@@ -72,13 +106,29 @@ exports.getChatHistory = async (req, res) => {
 
 exports.markAsRead = async (req, res) => {
   try {
-    const { senderId } = req.body;
-    const currentUserId = req.user.id;
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
 
-    await ChatMessage.updateMany(
+    const { senderId } = req.body;
+    const currentUserId = req.user._id || req.user.id;
+
+    if (!senderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender ID is required",
+      });
+    }
+
+    const result = await ChatMessage.updateMany(
       { sender: senderId, receiver: currentUserId, read: false },
       { read: true },
     );
+
+    console.log(`Marked ${result.modifiedCount} messages as read`);
 
     await pusher.trigger(`private-chat-${senderId}`, "messages-read", {
       reader: currentUserId,
@@ -90,6 +140,7 @@ exports.markAsRead = async (req, res) => {
       message: "Messages marked as read",
     });
   } catch (error) {
+    console.error("Mark as read error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to mark messages as read",
@@ -100,91 +151,139 @@ exports.markAsRead = async (req, res) => {
 
 exports.typingIndicator = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
     const { receiverId, isTyping } = req.body;
-    const senderId = req.user.id;
+    const senderId = req.user._id || req.user.id;
+
+    if (!receiverId) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver ID is required",
+      });
+    }
 
     await pusher.trigger(`private-chat-${receiverId}`, "typing-indicator", {
       user: senderId,
-      isTyping,
+      isTyping: isTyping || false,
       timestamp: Date.now(),
     });
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      message: "Typing indicator sent",
+    });
   } catch (error) {
+    console.error("Typing indicator error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to send typing indicator",
+      error: error.message,
     });
   }
 };
 
 exports.getConversations = async (req, res) => {
   try {
-    const currentUserId = req.user.id;
+    console.log("getConversations called");
+    console.log("req.user:", req.user);
 
-    // Get all unique users the current user has chatted with
+    if (!req.user) {
+      console.log("req.user is null! Auth middleware failed?");
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated - Please login again",
+      });
+    }
+
+    const currentUserId = req.user._id ? req.user._id.toString() : req.user.id;
+
+    if (!currentUserId) {
+      console.log("No user ID found in req.user:", req.user);
+      return res.status(400).json({
+        success: false,
+        message: "User ID not found in token",
+      });
+    }
+
+    console.log("Current User ID:", currentUserId);
+
     const conversations = await ChatMessage.aggregate([
       {
         $match: {
-          $or: [
-            { sender: currentUserId },
-            { receiver: currentUserId }
-          ]
-        }
+          $or: [{ sender: currentUserId }, { receiver: currentUserId }],
+        },
       },
       {
-        $sort: { createdAt: -1 }
+        $sort: { createdAt: -1 },
       },
       {
         $group: {
           _id: {
             $cond: [
-              { $eq: ['$sender', currentUserId] },
-              '$receiver',
-              '$sender'
-            ]
+              { $eq: ["$sender", currentUserId] },
+              "$receiver",
+              "$sender",
+            ],
           },
-          lastMessage: { $first: '$message' },
-          lastMessageTime: { $first: '$createdAt' },
+          lastMessage: { $first: "$message" },
+          lastMessageTime: { $first: "$createdAt" },
           unreadCount: {
             $sum: {
               $cond: [
                 {
                   $and: [
-                    { $eq: ['$receiver', currentUserId] },
-                    { $eq: ['$read', false] }
-                  ]
+                    { $eq: ["$receiver", currentUserId] },
+                    { $eq: ["$read", false] },
+                  ],
                 },
                 1,
-                0
-              ]
-            }
-          }
-        }
+                0,
+              ],
+            },
+          },
+        },
       },
       {
-        $sort: { lastMessageTime: -1 }
-      }
+        $sort: { lastMessageTime: -1 },
+      },
     ]);
 
-    // Populate user details
-    const User = require('../models/user');
+    console.log(`Found ${conversations.length} conversations`);
+
+    const User = require("../models/user");
     const conversationsWithUsers = await Promise.all(
       conversations.map(async (conv) => {
-        const user = await User.findById(conv._id).select('name email profileImage role');
-        return {
-          userId: conv._id,
-          user: user,
-          lastMessage: conv.lastMessage,
-          lastMessageTime: conv.lastMessageTime,
-          unreadCount: conv.unreadCount
-        };
-      })
+        try {
+          const user = await User.findById(conv._id).select(
+            "name email profileImage role",
+          );
+          return {
+            userId: conv._id,
+            user: user,
+            lastMessage: conv.lastMessage,
+            lastMessageTime: conv.lastMessageTime,
+            unreadCount: conv.unreadCount,
+          };
+        } catch (err) {
+          console.error(`Error fetching user ${conv._id}:`, err);
+          return null;
+        }
+      }),
+    );
+
+    const validConversations = conversationsWithUsers.filter(
+      (c) => c !== null && c.user !== null,
     );
 
     res.json({
       success: true,
-      data: conversationsWithUsers.filter(c => c.user !== null)
+      data: validConversations,
     });
   } catch (error) {
     console.error("Get conversations error:", error);

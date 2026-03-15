@@ -6,13 +6,15 @@ const errorHandler = require("./middleware/errorMiddlerware");
 const swaggerUI = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
 const agoraRoutes = require("./routes/agoraRoutes");
+const pusher = require("./config/pusher.config");
 
 dotenv.config();
 connectDB();
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static("uploads"));
+app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
@@ -25,14 +27,23 @@ app.use("/api/cart", require("./routes/cartRoutes"));
 app.use("/api/appointments", require("./routes/appointmentsRoutes"));
 app.use("/api/reminders", require("./routes/remindersRoutes"));
 app.use("/api/laboratories", require("./routes/laboratoryRoutes"));
-app.use("/api/instructors/courses", require("./routes/instructorCoursesRoutes"));
-app.use("/api/instructors/precautions", require("./routes/instructorPrecautionsRoutes"));
+app.use(
+  "/api/instructors/courses",
+  require("./routes/instructorCoursesRoutes"),
+);
+app.use(
+  "/api/instructors/precautions",
+  require("./routes/instructorPrecautionsRoutes"),
+);
 app.use("/api/instructors", require("./routes/instructorRoutes"));
 app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/medical-records", require("./routes/medicalRecordRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
-app.use("/api/prescription-templates", require("./routes/prescriptionTemplateRoutes"));
+app.use(
+  "/api/prescription-templates",
+  require("./routes/prescriptionTemplateRoutes"),
+);
 app.use("/api/test", require("./routes/testRoutes"));
 app.use("/api/tasks", require("./routes/taskRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
@@ -45,3 +56,59 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () =>
   console.log(`Server running on port ${PORT}`),
 );
+
+app.get("/debug/users", async (req, res) => {
+  try {
+    const User = require("./models/user");
+    const users = await User.find({}).select("-password");
+    res.json({
+      success: true,
+      total: users.length,
+      users: users.map((u) => ({
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        role: u.role,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/debug/login/:email", async (req, res) => {
+  try {
+    const User = require("./models/user");
+    const jwt = require("jsonwebtoken");
+
+    const user = await User.findOne({ email: req.params.email });
+
+    if (!user) {
+      return res.json({ message: "User not found" });
+    }
+
+    // Manual token generate karo
+    const token = jwt.sign(
+      { id: user._id.toString() },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" },
+    );
+
+    res.json({
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      token: token,
+      note: "Use this token for API calls",
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+console.log("PUSHER_CLUSTER:", process.env.PUSHER_CLUSTER);
+console.log("PUSHER_APP_ID:", process.env.PUSHER_APP_ID);
+console.log("PUSHER_KEY:", process.env.PUSHER_KEY);

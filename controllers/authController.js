@@ -6,110 +6,48 @@ const generateToken = require("../utils/generateToken");
 const bcrypt = require("bcryptjs");
 
 exports.registerUser = async (req, res) => {
-  const { name, email, password, role, phoneNumber } = req.body;
   try {
+    console.log("Register request:", req.body);
+
+    const { name, email, password, role, phoneNumber } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Please add all required fields",
+      });
+    }
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "User already exists",
+      });
     }
 
     const user = await User.create({
       name,
       email,
       password,
-      role,
-      phoneNumber,
+      role: role || "user",
+      phoneNumber: phoneNumber || "",
     });
 
+    console.log("User created:", user._id);
+
     if (user) {
-      console.log('✅ NEW USER REGISTERED:');
-      console.log('   Name:', user.name);
-      console.log('   Email:', user.email);
-      console.log('   Role:', user.role);
-      console.log('   Phone:', user.phoneNumber);
-      console.log('   ID:', user._id);
-      console.log('   Created:', new Date().toLocaleString());
-
-      if (role === 'Doctor') {
-        const doctorProfile = await Doctor.create({
-          user: user._id,
-          specialization: 'General Practitioner',
-          degrees: [],
-          experience: '',
-          licenseNumber: '',
-          clinicName: '',
-          clinicAddress: '',
-          availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-          availableTime: {
-            start: '09:00 AM',
-            end: '05:00 PM'
-          },
-          isApproved: true,
-          ratings: [],
-          reviews: []
-        });
-        console.log('   ✅ Doctor profile auto-created');
-        console.log('   Doctor ID:', doctorProfile._id);
-      }
-
-      // Automatically create Pharmacy profile if role is Pharmacy
-      if (role === 'Pharmacy') {
-        const pharmacyProfile = await Pharmacy.create({
-          user: user._id,
-          ownerName: user.name,
-          isApproved: true,
-          deliveryAvailable: true,
-          openHours: {
-            from: '09:00 AM',
-            to: '09:00 PM'
-          },
-          location: {
-            type: 'Point',
-            coordinates: [0, 0]
-          }
-        });
-        console.log('   ✅ Pharmacy profile auto-created');
-        console.log('   Pharmacy ID:', pharmacyProfile._id);
-      }
-
-      // Automatically create Laboratory profile if role is Laboratory
-      if (role === 'Laboratory') {
-        const labProfile = await Laboratory.create({
-          user: user._id,
-          labName: `${user.name} Laboratory`,
-          ownerName: user.name,
-          isApproved: true,
-          homeSampleAvailable: true,
-          workingHours: {
-            from: '08:00 AM',
-            to: '08:00 PM'
-          },
-          location: {
-            type: 'Point',
-            coordinates: [0, 0]
-          },
-          testsOffered: []
-        });
-        console.log('   ✅ Laboratory profile auto-created');
-        console.log('   Laboratory ID:', labProfile._id);
-      }
-      
-      console.log('-----------------------------------');
-      
       res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        phoneNumber: user.phoneNumber,
         token: generateToken(user._id),
       });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
     }
   } catch (error) {
-    console.error('❌ REGISTRATION ERROR:', error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Register error:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -118,13 +56,13 @@ exports.loginUser = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (user && (await bcrypt.compare(password, user.password))) {
-    console.log('✅ USER LOGGED IN:');
-    console.log('   Name:', user.name);
-    console.log('   Email:', user.email);
-    console.log('   Role:', user.role);
-    console.log('   Time:', new Date().toLocaleString());
-    console.log('-----------------------------------');
-    
+    console.log("✅ USER LOGGED IN:");
+    console.log("   Name:", user.name);
+    console.log("   Email:", user.email);
+    console.log("   Role:", user.role);
+    console.log("   Time:", new Date().toLocaleString());
+    console.log("-----------------------------------");
+
     res.json({
       _id: user.id,
       name: user.name,
@@ -132,7 +70,7 @@ exports.loginUser = async (req, res) => {
       token: generateToken(user.id),
     });
   } else {
-    console.log('❌ LOGIN FAILED:', email);
+    console.log("❌ LOGIN FAILED:", email);
     res.status(401).json({ message: "Invalid credentials" });
   }
 };
@@ -205,10 +143,10 @@ exports.resetPassword = async (req, res) => {
 
     await user.save();
 
-    console.log('✅ PASSWORD RESET SUCCESSFUL:');
-    console.log('   Email:', user.email);
-    console.log('   Time:', new Date().toLocaleString());
-    console.log('-----------------------------------');
+    console.log("✅ PASSWORD RESET SUCCESSFUL:");
+    console.log("   Email:", user.email);
+    console.log("   Time:", new Date().toLocaleString());
+    console.log("-----------------------------------");
 
     return res.json({ message: "Reset Password Successfully" });
   } catch (error) {
