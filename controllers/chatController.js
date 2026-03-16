@@ -1,4 +1,5 @@
 const ChatMessage = require("../models/chatmessage");
+const Notification = require("../models/notification");
 const pusher = require("../config/pusher.config");
 
 exports.sendMessage = async (req, res) => {
@@ -32,6 +33,20 @@ exports.sendMessage = async (req, res) => {
 
     await newMessage.populate("sender", "name email profileImage");
     await newMessage.populate("receiver", "name email profileImage");
+
+    // Create notification for receiver
+    try {
+      await Notification.create({
+        user: receiverId,
+        type: 'general',
+        title: 'New Message',
+        message: `${newMessage.sender.name} sent you a message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
+        read: false,
+        data: { senderId: senderId.toString(), senderName: newMessage.sender.name },
+      });
+    } catch (notifErr) {
+      console.warn("Could not create notification (non-critical):", notifErr.message);
+    }
 
     // Pusher is non-critical — don't let it crash the message send
     try {

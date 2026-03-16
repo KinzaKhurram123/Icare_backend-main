@@ -33,6 +33,29 @@ exports.registerUser = async (req, res) => {
 
     console.log("User created:", user._id);
 
+    // Auto-create Doctor profile so they appear in patient's doctors list immediately
+    if (user.role === 'Doctor') {
+      try {
+        await Doctor.create({
+          user: user._id,
+          specialization: 'General Practitioner',
+          degrees: [],
+          experience: '',
+          licenseNumber: '',
+          clinicName: '',
+          clinicAddress: '',
+          availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          availableTime: { start: '09:00', end: '17:00' },
+          isApproved: true,
+          ratings: [],
+          reviews: [],
+        });
+        console.log("✅ Doctor profile auto-created for:", user._id);
+      } catch (docErr) {
+        console.warn("⚠️ Could not auto-create doctor profile:", docErr.message);
+      }
+    }
+
     if (user) {
       res.status(201).json({
         _id: user._id,

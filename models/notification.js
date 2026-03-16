@@ -30,6 +30,10 @@ const notificationSchema = new mongoose.Schema({
   relatedModel: {
     type: String,
     enum: ['Appointment', 'MedicalRecord', 'Review']
+  },
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   }
 }, {
   timestamps: true
