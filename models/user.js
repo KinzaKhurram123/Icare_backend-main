@@ -28,6 +28,11 @@ const UserSchema = new mongoose.Schema(
       required: false,
       default: '',
     },
+    fcmToken: {
+      type: String,
+      required: false,
+      default: null,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

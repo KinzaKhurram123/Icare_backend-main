@@ -49,3 +49,22 @@ exports.updateUserProfile = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// Save/update FCM token for push notifications
+exports.saveFcmToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({ success: false, message: 'FCM token is required' });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { fcmToken });
+    console.log(`✅ FCM token saved for user ${req.user.id}`);
+
+    res.json({ success: true, message: 'FCM token saved' });
+  } catch (error) {
+    console.error('❌ Error saving FCM token:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

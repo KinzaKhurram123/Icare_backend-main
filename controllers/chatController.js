@@ -1,6 +1,7 @@
 const ChatMessage = require("../models/chatmessage");
 const Notification = require("../models/notification");
 const pusher = require("../config/pusher.config");
+const { sendPushNotification } = require("../config/firebase");
 
 exports.sendMessage = async (req, res) => {
   try {
@@ -44,6 +45,18 @@ exports.sendMessage = async (req, res) => {
         read: false,
         data: { senderId: senderId.toString(), senderName: newMessage.sender.name },
       });
+
+      // FCM push to receiver's device
+      const User = require('../models/user');
+      const receiver = await User.findById(receiverId).select('fcmToken');
+      if (receiver?.fcmToken) {
+        await sendPushNotification(
+          receiver.fcmToken,
+          `New message from ${newMessage.sender.name}`,
+          message.substring(0, 100),
+          { type: 'chat', senderId: senderId.toString(), senderName: newMessage.sender.name }
+        );
+      }
     } catch (notifErr) {
       console.warn("Could not create notification (non-critical):", notifErr.message);
     }

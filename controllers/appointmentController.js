@@ -1,6 +1,8 @@
 const Appointment = require('../models/appointment')
 const User = require('../models/user');
 const Doctor = require('../models/doctor');
+const { sendPushNotification } = require('../config/firebase');
+const Notification = require('../models/notification');
 
 
 exports.bookAppointment = async (req, res) => {
@@ -33,6 +35,30 @@ exports.bookAppointment = async (req, res) => {
         });
 
         console.log('✅ Appointment created successfully:', appointment._id);
+
+        // Notify doctor about new appointment
+        try {
+          const doctorUser = await User.findById(doctorUserId).select('fcmToken name');
+          const patientUser = await User.findById(patientId).select('name');
+          if (doctorUser?.fcmToken) {
+            await sendPushNotification(
+              doctorUser.fcmToken,
+              'New Appointment Booked',
+              `${patientUser?.name || 'A patient'} booked an appointment on ${date}`,
+              { type: 'appointment', appointmentId: appointment._id.toString() }
+            );
+          }
+          await Notification.create({
+            user: doctorUserId,
+            type: 'appointment',
+            title: 'New Appointment',
+            message: `${patientUser?.name || 'A patient'} booked an appointment on ${date}`,
+            relatedId: appointment._id,
+            relatedModel: 'Appointment',
+          });
+        } catch (notifErr) {
+          console.warn('Appointment notification failed (non-critical):', notifErr.message);
+        }
 
         res.status(201).json({
             message: 'Appointment booked successfully',
@@ -105,6 +131,30 @@ exports.updateAppointmentStatus = async (req, res) => {
         await appointment.save();
 
         console.log('✅ Appointment status updated');
+
+        // Notify patient about status change
+        try {
+          const patient = await User.findById(appointment.patient).select('fcmToken name');
+          const doctor = await User.findById(userId).select('name');
+          if (patient?.fcmToken) {
+            await sendPushNotification(
+              patient.fcmToken,
+              'Appointment Update',
+              `Dr. ${doctor?.name || 'Your doctor'} ${status} your appointment`,
+              { type: 'appointment', appointmentId: appointment._id.toString(), status }
+            );
+          }
+          await Notification.create({
+            user: appointment.patient,
+            type: 'appointment',
+            title: 'Appointment Update',
+            message: `Your appointment has been ${status} by Dr. ${doctor?.name || 'your doctor'}`,
+            relatedId: appointment._id,
+            relatedModel: 'Appointment',
+          });
+        } catch (notifErr) {
+          console.warn('Status notification failed (non-critical):', notifErr.message);
+        }
 
         res.status(200).json({
             success: true,
