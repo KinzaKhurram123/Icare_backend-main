@@ -1,16 +1,18 @@
 const admin = require('firebase-admin');
+const path = require('path');
 
 // Initialize Firebase Admin only once
 if (!admin.apps.length) {
-  // Use service account from env variable (JSON string) or file
   let credential;
-  
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    // From env variable (JSON string)
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     credential = admin.credential.cert(serviceAccount);
   } else {
-    // Fallback: use application default credentials (works on Google Cloud)
-    credential = admin.credential.applicationDefault();
+    // From file (preferred on VPS)
+    const keyPath = path.join(__dirname, 'serviceAccountKey.json');
+    credential = admin.credential.cert(require(keyPath));
   }
 
   admin.initializeApp({ credential });
