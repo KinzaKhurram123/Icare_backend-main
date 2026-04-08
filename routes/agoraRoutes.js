@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const protect = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const { RtcTokenBuilder, RtcRole } = require("agora-token");
 
 router.get("/agora/token", protect, async (req, res) => {

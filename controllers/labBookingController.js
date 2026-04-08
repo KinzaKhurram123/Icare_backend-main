@@ -71,6 +71,7 @@ exports.getMyBookings = async (req, res) => {
     const userId = req.user._id;
     const bookings = await LabBooking.find({ patient: userId })
       .populate("laboratory", "labName city")
+      .populate("doctor", "name email")
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: bookings.length, bookings });
   } catch (error) {
@@ -103,6 +104,8 @@ exports.getLabBookings = async (req, res) => {
     }
     const bookings = await LabBooking.find(filter)
       .populate("patient", "name email")
+      .populate("doctor", "name email")
+      .populate("medicalRecord")
       .sort({ date: -1 });
     res.status(200).json({ success: true, count: bookings.length, bookings });
   } catch (error) {
@@ -117,7 +120,8 @@ exports.getBookingById = async (req, res) => {
     const userId = req.user._id;
     const booking = await LabBooking.findById(id)
       .populate("laboratory", "labName city user")
-      .populate("patient", "name email");
+      .populate("patient", "name email")
+      .populate("doctor", "name email");
     if (!booking) return res.status(404).json({ message: "Booking not found" });
     const isParticipant =
       booking.patient.toString() === userId.toString() ||
@@ -148,7 +152,9 @@ exports.updateBooking = async (req, res) => {
       status,
       prescription,
       resultNotes,
-      reportUrl
+      reportUrl,
+      isAbnormal,
+      flagReason
     } = req.body;
     const booking = await LabBooking.findById(id).populate(
       "laboratory",
@@ -172,6 +178,8 @@ exports.updateBooking = async (req, res) => {
     if (prescription !== undefined) update.prescription = prescription;
     if (resultNotes !== undefined) update.resultNotes = resultNotes;
     if (reportUrl !== undefined) update.reportUrl = reportUrl;
+    if (isAbnormal !== undefined) update.isAbnormal = isAbnormal;
+    if (flagReason !== undefined) update.flagReason = flagReason;
     if (status !== undefined) {
       if (isLab) {
         update.status = status;
@@ -186,8 +194,49 @@ exports.updateBooking = async (req, res) => {
     const updated = await LabBooking.findByIdAndUpdate(
       id,
       { $set: update },
-      { new: true },
+      { new: true }
     );
+
+    // If completed, award points and notify referring doctor
+    if (updated && updated.status === "completed") {
+      // Award points for lab completion
+      try {
+        const Patient = require("../models/patient");
+        await Patient.findOneAndUpdate(
+          { user: updated.patient },
+          {
+            $inc: { points: 30 },
+            $addToSet: { badges: { name: "Proactive Patient", icon: "science" } }
+          }
+        );
+        console.log(`✅ 30 points awarded to user ${updated.patient} for lab test completion`);
+      } catch (awardErr) {
+        console.error("❌ Failed to award points for lab completion:", awardErr);
+      }
+
+      if (updated.medicalRecord) {
+        try {
+          const MedicalRecord = require("../models/medicalRecord");
+          const Notification = require("../models/notification");
+          const record = await MedicalRecord.findById(updated.medicalRecord);
+          if (record && record.doctor) {
+            await Notification.create({
+              recipient: record.doctor,
+              sender: updated.laboratory,
+              type: "progress",
+              title: "Lab Results Ready",
+              message: `Laboratory results for ${updated.testName} are now available for your patient.`,
+              relatedId: record._id,
+              onModel: "MedicalRecord"
+            });
+            console.log("✅ Referring doctor notified of lab results");
+          }
+        } catch (err) {
+          console.error("Error notifying doctor of lab results:", err);
+        }
+      }
+    }
+
     res.status(200).json({ success: true, booking: updated });
   } catch (error) {
     console.error("Update Lab Booking Error:", error);

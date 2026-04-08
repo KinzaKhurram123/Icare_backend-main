@@ -1,5 +1,5 @@
 const express = require('express');
-const protect = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const { createMedicine, updateMedicine, deleteMedicine, getMedicineById, listMedicines } = require('../controllers/pharmacyProductController');
 
 const router = express.Router();

@@ -27,6 +27,12 @@ app.use("/api/cart", require("./routes/cartRoutes"));
 app.use("/api/appointments", require("./routes/appointmentsRoutes"));
 app.use("/api/reminders", require("./routes/remindersRoutes"));
 app.use("/api/laboratories", require("./routes/laboratoryRoutes"));
+app.use("/api/lab-supplies", require("./routes/labSupplyRoutes"));
+app.use("/api/test-catalog", require("./routes/testCatalogRoutes"));
+app.use("/api/technicians", require("./routes/technicianRoutes"));
+app.use("/api/home-collections", require("./routes/homeCollectionRoutes"));
+app.use("/api/qa-verification", require("./routes/qaVerificationRoutes"));
+app.use("/api/lab-lms", require("./routes/labLmsRoutes"));
 app.use(
   "/api/instructors/courses",
   require("./routes/instructorCoursesRoutes"),
@@ -38,6 +44,7 @@ app.use(
 app.use("/api/instructors", require("./routes/instructorRoutes"));
 app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
+app.use("/api/courses", require("./routes/courseRoutes"));
 app.use("/api/medical-records", require("./routes/medicalRecordRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use(
@@ -47,6 +54,19 @@ app.use(
 app.use("/api/test", require("./routes/testRoutes"));
 app.use("/api/tasks", require("./routes/taskRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
+app.use("/api/community", require("./routes/communityRoutes"));
+app.use("/api/gamification", require("./routes/gamificationRoutes"));
+app.use("/api/subscriptions", require("./routes/subscriptionRoutes"));
+app.use("/api/vitals", require("./routes/vitalRoutes"));
+app.use("/api/lifestyle", require("./routes/lifestyleRoutes"));
+app.use("/api/icd-codes", require("./routes/icdRoutes"));
+app.use("/api/course-questions", require("./routes/courseQuestionRoutes"));
+app.use("/api/clinical", require("./routes/clinicalRoutes"));
+app.use("/api/analytics", require("./routes/analyticsRoutes"));
+app.use("/api/forum", require("./routes/forumRoutes"));
+app.use("/api/credentials", require("./routes/credentialRoutes"));
+app.use("/api/reminders", require("./routes/remindersRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 app.use("/api", agoraRoutes);
 

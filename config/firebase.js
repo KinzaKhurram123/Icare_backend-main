@@ -1,22 +1,45 @@
 const admin = require('firebase-admin');
 const path = require('path');
 
+let firebaseInitialized = false;
+
 // Initialize Firebase Admin only once
 if (!admin.apps.length) {
-  let credential;
+  try {
+    let credential;
 
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    // From env variable (JSON string)
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    credential = admin.credential.cert(serviceAccount);
-  } else {
-    // From file (preferred on VPS)
-    const keyPath = path.join(__dirname, 'serviceAccountKey.json');
-    credential = admin.credential.cert(require(keyPath));
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      // From env variable (JSON string)
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      
+      // Check if service account has required fields
+      if (serviceAccount.private_key && serviceAccount.client_email) {
+        credential = admin.credential.cert(serviceAccount);
+        admin.initializeApp({ credential });
+        firebaseInitialized = true;
+        console.log('✅ Firebase Admin initialized');
+      } else {
+        console.warn('⚠️  Firebase credentials incomplete - Push notifications disabled');
+        console.warn('   For local testing, this is OK. Configure Firebase for production.');
+      }
+    } else {
+      // From file (preferred on VPS)
+      const keyPath = path.join(__dirname, 'serviceAccountKey.json');
+      try {
+        credential = admin.credential.cert(require(keyPath));
+        admin.initializeApp({ credential });
+        firebaseInitialized = true;
+        console.log('✅ Firebase Admin initialized from file');
+      } catch (fileErr) {
+        console.warn('⚠️  Firebase service account file not found - Push notifications disabled');
+        console.warn('   For local testing, this is OK. Configure Firebase for production.');
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️  Firebase initialization failed - Push notifications disabled');
+    console.warn('   Error:', error.message);
+    console.warn('   For local testing, this is OK. Configure Firebase for production.');
   }
-
-  admin.initializeApp({ credential });
-  console.log('✅ Firebase Admin initialized');
 }
 
 /**
@@ -27,6 +50,11 @@ if (!admin.apps.length) {
  * @param {object} data - Extra data payload (all values must be strings)
  */
 const sendPushNotification = async (fcmToken, title, body, data = {}) => {
+  if (!firebaseInitialized) {
+    console.log('📲 Push notification skipped (Firebase not configured)');
+    return;
+  }
+
   if (!fcmToken) return;
 
   // Ensure all data values are strings

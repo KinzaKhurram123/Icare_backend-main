@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prescriptionTemplateController = require('../controllers/prescriptionTemplateController');
-const protect = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 
 router.get('/', protect, prescriptionTemplateController.getTemplates);
 router.post('/', protect, prescriptionTemplateController.createTemplate);

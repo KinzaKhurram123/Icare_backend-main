@@ -62,7 +62,10 @@ exports.getPharmacyOrders = async (req, res) => {
     const { status } = req.query;
     const filter = { pharmacy: pharmacy._id };
     if (status) filter.status = status;
-    const orders = await PharmacyOrder.find(filter).sort({ createdAt: -1 });
+    const orders = await PharmacyOrder.find(filter)
+      .populate("user", "name email phoneNumber")
+      .populate("medicalRecord")
+      .sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: orders.length, orders });
   } catch (error) {
     console.error('Get Pharmacy Orders Error:', error);
@@ -99,6 +102,30 @@ exports.updateOrderStatus = async (req, res) => {
     }
     order.status = status || order.status;
     await order.save();
+
+    // Notify referring doctor if clinical order
+    if (status === "completed" && order.medicalRecord) {
+      try {
+        const MedicalRecord = require("../models/medicalRecord");
+        const Notification = require("../models/notification");
+        const record = await MedicalRecord.findById(order.medicalRecord);
+        if (record && record.doctor) {
+          await Notification.create({
+            recipient: record.doctor,
+            sender: order.pharmacy,
+            type: "progress",
+            title: "Prescription Dispensed",
+            message: `Medication for your patient has been dispensed by the pharmacy.`,
+            relatedId: record._id,
+            onModel: "MedicalRecord"
+          });
+          console.log("✅ Referring doctor notified of prescription fulfillment");
+        }
+      } catch (err) {
+        console.error("Error notifying doctor of pharmacy order completion:", err);
+      }
+    }
+
     res.status(200).json({ success: true, order });
   } catch (error) {
     console.error('Update Order Status Error:', error);

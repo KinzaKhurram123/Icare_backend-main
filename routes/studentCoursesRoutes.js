@@ -1,11 +1,11 @@
 const express = require('express');
-const protect = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const { listPublicCourses, getCourseDetails, buyCourse, myPurchases, updateProgress, myCertificates, getCertificateById } = require('../controllers/studentCourseController');
 
 const router = express.Router();
 
 // IMPORTANT: static routes must come BEFORE the dynamic /:id route
-router.get('/', listPublicCourses);
+router.get('/', protect, listPublicCourses);
 router.post('/enrollments', protect, buyCourse);
 router.get('/enrollments/my', protect, myPurchases);
 router.put('/enrollments/:id/progress', protect, updateProgress);

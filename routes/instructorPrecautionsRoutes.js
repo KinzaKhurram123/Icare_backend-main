@@ -1,5 +1,5 @@
 const express = require('express');
-const protect = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const { createPrecaution, listPrecautions, getPrecautionById, updatePrecaution, deletePrecaution } = require('../controllers/instructorPrecautionController');
 
 const router = express.Router();

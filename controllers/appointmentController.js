@@ -132,6 +132,23 @@ exports.updateAppointmentStatus = async (req, res) => {
 
         console.log('✅ Appointment status updated');
 
+        // Award points if completed
+        if (status === 'completed') {
+          try {
+            const Patient = require("../models/patient");
+            await Patient.findOneAndUpdate(
+              { user: appointment.patient },
+              {
+                $inc: { points: 50 },
+                $addToSet: { badges: { name: "Health Warrior", icon: "verified" } }
+              }
+            );
+            console.log(`✅ 50 points awarded to user ${appointment.patient} for completing consultation`);
+          } catch (awardErr) {
+            console.error("❌ Failed to award points for consultation completion:", awardErr);
+          }
+        }
+
         // Notify patient about status change
         try {
           const patient = await User.findById(appointment.patient).select('fcmToken name');
