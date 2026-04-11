@@ -107,3 +107,72 @@ exports.getMyPatientProfile = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 }
+
+// ── Emergency Contacts ────────────────────────────────────────────────────────
+
+exports.getEmergencyContacts = async (req, res) => {
+    try {
+        const patient = await Patient.findOne({ user: req.user.id });
+        // Return empty array if no patient profile yet — not an error
+        res.status(200).json({ success: true, contacts: patient?.emergencyContacts || [] });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+exports.addEmergencyContact = async (req, res) => {
+    try {
+        const { name, phone, relation } = req.body;
+        if (!name || !phone) return res.status(400).json({ message: 'Name and phone are required' });
+
+        let patient = await Patient.findOne({ user: req.user.id });
+        if (!patient) {
+            // Auto-create a minimal patient profile if none exists
+            try {
+                patient = new Patient({ user: req.user.id, emergencyContacts: [] });
+                await patient.save();
+            } catch (createErr) {
+                // If creation fails (e.g. duplicate), try finding again
+                patient = await Patient.findOne({ user: req.user.id });
+                if (!patient) return res.status(500).json({ message: 'Could not create patient profile' });
+            }
+        }
+
+        if (!patient.emergencyContacts) patient.emergencyContacts = [];
+        patient.emergencyContacts.push({ name, phone, relation: relation || 'Other' });
+        await patient.save();
+
+        res.status(201).json({ success: true, contacts: patient.emergencyContacts });
+    } catch (error) {
+        console.error('Add Emergency Contact Error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+exports.deleteEmergencyContact = async (req, res) => {
+    try {
+        const { contactId } = req.params;
+        const patient = await Patient.findOne({ user: req.user.id });
+        if (!patient) return res.status(404).json({ message: 'Patient profile not found' });
+
+        patient.emergencyContacts = patient.emergencyContacts.filter(
+            c => c._id.toString() !== contactId
+        );
+        await patient.save();
+
+        res.status(200).json({ success: true, contacts: patient.emergencyContacts });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+// Get emergency contacts for a specific patient (for doctors)
+exports.getPatientEmergencyContacts = async (req, res) => {
+    try {
+        const { patientUserId } = req.params;
+        const patient = await Patient.findOne({ user: patientUserId });
+        res.status(200).json({ success: true, contacts: patient?.emergencyContacts || [] });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};

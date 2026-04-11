@@ -34,7 +34,7 @@ exports.updateUserProfile = async (req, res) => {
 
         if (name) user.name = name;
         if (phoneNumber) user.phoneNumber = phoneNumber;
-        if (profilePicture) user.profilePicture = profilePicture;
+        if (profilePicture) user.profileImage = profilePicture; // store in profileImage field
         if (bio !== undefined) user.bio = bio;
         if (age !== undefined) user.age = age;
         if (qualification !== undefined) user.qualification = qualification;

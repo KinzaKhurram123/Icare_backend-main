@@ -20,6 +20,11 @@ const patientSchema = new mongoose.Schema({
         name: String,
         phone: String,
     },
+    emergencyContacts: [{
+        name: { type: String, required: true },
+        phone: { type: String, required: true },
+        relation: { type: String, default: 'Other' },
+    }],
 
     height: Number,
     weight: Number,
