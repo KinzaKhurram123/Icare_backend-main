@@ -23,7 +23,8 @@ exports.getUserProfile = async (req, res) => {
 
 exports.updateUserProfile = async (req, res) => {
     try {
-        const { name, phoneNumber, profilePicture } = req.body;
+        console.log('📝 UPDATE PROFILE body:', req.body);
+        const { name, phoneNumber, profilePicture, bio, age, qualification } = req.body;
 
         const user = await User.findById(req.user.id);
 
@@ -34,13 +35,11 @@ exports.updateUserProfile = async (req, res) => {
         if (name) user.name = name;
         if (phoneNumber) user.phoneNumber = phoneNumber;
         if (profilePicture) user.profilePicture = profilePicture;
+        if (bio !== undefined) user.bio = bio;
+        if (age !== undefined) user.age = age;
+        if (qualification !== undefined) user.qualification = qualification;
 
         await user.save();
-
-        console.log('✅ USER PROFILE UPDATED:');
-        console.log('   Name:', user.name);
-        console.log('   Phone:', user.phoneNumber);
-        console.log('-----------------------------------');
 
         const updatedUser = await User.findById(req.user.id).select('-password');
         res.json(updatedUser);

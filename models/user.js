@@ -74,6 +74,26 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    googleId: {
+      type: String,
+      default: '',
+    },
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    bio: {
+      type: String,
+      default: '',
+    },
+    age: {
+      type: String,
+      default: '',
+    },
+    qualification: {
+      type: String,
+      default: '',
+    },
     verificationDetails: {
       licenseNumber: { type: String, default: "" },
       location: { type: String, default: "" },

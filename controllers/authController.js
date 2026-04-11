@@ -368,3 +368,61 @@ exports.resendVerificationEmail = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// Google Sign-In
+exports.googleAuth = async (req, res) => {
+  try {
+    const { idToken, name, email, photoUrl } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Verify Firebase ID token
+    const admin = require('../config/firebase');
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid Google token' });
+    }
+
+    if (decodedToken.email !== email) {
+      return res.status(401).json({ message: 'Token email mismatch' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email,
+        password: require('crypto').randomBytes(32).toString('hex'), // random password
+        role: 'Patient',
+        isEmailVerified: true,
+        isApproved: true,
+        profileImage: photoUrl || '',
+        googleId: decodedToken.uid,
+      });
+    } else {
+      // Update googleId if not set
+      if (!user.googleId) {
+        user.googleId = decodedToken.uid;
+        await user.save();
+      }
+    }
+
+    const token = generateToken(user._id);
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isApproved: user.isApproved,
+      },
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
