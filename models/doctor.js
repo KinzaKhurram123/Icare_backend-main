@@ -8,6 +8,7 @@ const doctorSchema = new mongoose.Schema({
   degrees: [String],
   experience: String,
   licenseNumber: String,
+  pmdcNumber: String,
   clinicName: String,
   clinicAddress: String,
   availability: {

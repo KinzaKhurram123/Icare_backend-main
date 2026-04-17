@@ -55,7 +55,7 @@ exports.createMedicalRecord = async (req, res) => {
       const LabBooking = require("../models/labBooking");
       const Notification = require("../models/notification");
       const Laboratory = require("../models/laboratory");
-      
+
       const makeBookingNumber = () => {
         const part = Math.random().toString(36).slice(2, 8).toUpperCase();
         return `LAB-REF-${Date.now().toString().slice(-6)}-${part}`;
@@ -107,7 +107,7 @@ exports.createMedicalRecord = async (req, res) => {
       const PharmacyOrder = require("../models/pharmacyOrder");
       const Notification = require("../models/notification");
       const Pharmacy = require("../models/pharmacy");
-      
+
       const makeOrderNumber = () => {
         const part = Math.random().toString(36).slice(2, 8).toUpperCase();
         return `PH-REF-${Date.now().toString().slice(-6)}-${part}`;
@@ -184,7 +184,9 @@ exports.createMedicalRecord = async (req, res) => {
     const populatedRecord = await MedicalRecord.findById(record._id)
       .populate("patient", "name email phoneNumber")
       .populate("doctor", "name email")
-      .populate("assignedCourses", "title thumbnail category");
+      .populate("assignedCourses", "title thumbnail category")
+      .populate({ path: "selectedPharmacy", populate: { path: "user", select: "name" } })
+      .populate("referredLaboratory", "labName city");
 
     // Award points for consultation
     const Patient = require("../models/patient");
@@ -198,6 +200,35 @@ exports.createMedicalRecord = async (req, res) => {
     await checkAndAwardBadges(patientId);
 
     console.log("✅ Medical record created, 50 points awarded, and badges checked");
+
+    // Auto-create doctor-assigned reminders for each prescribed medicine
+    if (prescription && prescription.medicines && prescription.medicines.length > 0) {
+      const Reminder = require('../models/reminder');
+      const patient = await User.findById(patientId).select('name email');
+      if (patient) {
+        for (const med of prescription.medicines) {
+          if (!med.name) continue;
+          try {
+            await Reminder.create({
+              patient: patientId,
+              patientEmail: patient.email,
+              patientName: patient.name,
+              title: `Take ${med.name}`,
+              disease: diagnosis || '',
+              tablets: [med.name],
+              instructions: `${med.dosage || ''} — ${med.frequency || ''} — ${med.duration || ''}`.trim().replace(/^—\s*|—\s*$/g, '').trim(),
+              time: '08:00',
+              date: new Date(),
+              prescription: med,
+              createdBy: doctorId,
+            });
+          } catch (reminderErr) {
+            console.error(`❌ Auto-reminder failed for ${med.name}:`, reminderErr);
+          }
+        }
+        console.log(`✅ ${prescription.medicines.length} doctor-assigned reminders created`);
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -220,13 +251,15 @@ exports.getPatientRecords = async (req, res) => {
       .populate("doctor", "name email")
       .populate("appointment", "date timeSlot")
       .populate("assignedCourses", "title thumbnail category")
+      .populate({ path: "selectedPharmacy", populate: { path: "user", select: "name" } })
+      .populate("referredLaboratory", "labName city")
       .sort({ createdAt: -1 })
       .lean();
 
     const LabBooking = require("../models/labBooking");
     const StudentCourseEnrollment = require("../models/studentCourseEnrollment");
     const { IntakeNotes, SoapNotes } = require("../models/clinical");
-    
+
     for (let record of records) {
       const bookings = await LabBooking.find({ medicalRecord: record._id, reportUrl: { $ne: null } });
       record.labReportUrls = bookings.map(b => ({ testName: b.testName, url: b.reportUrl, bookingNumber: b.bookingNumber }));
@@ -235,7 +268,7 @@ exports.getPatientRecords = async (req, res) => {
       if (record.appointment) {
         const intakeNotes = await IntakeNotes.findOne({ appointment: record.appointment._id }).lean();
         const soapNotes = await SoapNotes.findOne({ appointment: record.appointment._id }).lean();
-        
+
         if (intakeNotes) {
           record.intakeNotes = intakeNotes;
         }
@@ -280,13 +313,15 @@ exports.getMyRecords = async (req, res) => {
       .populate("doctor", "name email")
       .populate("appointment", "date timeSlot")
       .populate("assignedCourses", "title thumbnail category")
+      .populate({ path: "selectedPharmacy", populate: { path: "user", select: "name" } })
+      .populate("referredLaboratory", "labName city")
       .sort({ createdAt: -1 })
       .lean();
 
     const LabBooking = require("../models/labBooking");
     const StudentCourseEnrollment = require("../models/studentCourseEnrollment");
     const { IntakeNotes, SoapNotes } = require("../models/clinical");
-    
+
     for (let record of records) {
       const bookings = await LabBooking.find({ medicalRecord: record._id, reportUrl: { $ne: null } });
       record.labReportUrls = bookings.map(b => ({ testName: b.testName, url: b.reportUrl, bookingNumber: b.bookingNumber }));
@@ -295,7 +330,7 @@ exports.getMyRecords = async (req, res) => {
       if (record.appointment) {
         const intakeNotes = await IntakeNotes.findOne({ appointment: record.appointment._id }).lean();
         const soapNotes = await SoapNotes.findOne({ appointment: record.appointment._id }).lean();
-        
+
         if (intakeNotes) {
           record.intakeNotes = intakeNotes;
         }
@@ -338,6 +373,8 @@ exports.getDoctorRecords = async (req, res) => {
       .populate("doctor", "name email")
       .populate("appointment", "date timeSlot")
       .populate("assignedCourses", "title thumbnail category")
+      .populate({ path: "selectedPharmacy", populate: { path: "user", select: "name" } })
+      .populate("referredLaboratory", "labName city")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -417,7 +454,9 @@ exports.getRecordById = async (req, res) => {
       .populate("patient", "name email phoneNumber")
       .populate("doctor", "name email")
       .populate("appointment", "date timeSlot status")
-      .populate("assignedCourses", "title thumbnail category");
+      .populate("assignedCourses", "title thumbnail category")
+      .populate({ path: "selectedPharmacy", populate: { path: "user", select: "name" } })
+      .populate("referredLaboratory", "labName city");
 
     if (!record) {
       return res.status(404).json({ message: "Medical record not found" });

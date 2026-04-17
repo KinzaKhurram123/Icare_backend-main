@@ -233,3 +233,51 @@ exports.getHistory = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// @desc    Get notifications for current logged-in user
+// @route   GET /api/notifications/me
+// @access  Private
+exports.getMyNotifications = async (req, res) => {
+  try {
+    const Notification = require('../models/notification');
+    const notifications = await Notification.find({ user: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      notifications: notifications.map(n => ({
+        _id: n._id,
+        title: n.title,
+        message: n.message,
+        type: n.type || 'default',
+        read: n.read || false,
+        createdAt: n.createdAt,
+      }))
+    });
+  } catch (error) {
+    console.error('Error getting my notifications:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.markAsRead = async (req, res) => {
+  try {
+    const Notification = require('../models/notification');
+    await Notification.findByIdAndUpdate(req.params.id, { read: true });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const Notification = require('../models/notification');
+    await Notification.updateMany({ user: req.user.id, read: false }, { read: true });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

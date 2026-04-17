@@ -3,6 +3,20 @@ const Appointment = require("../models/appointment");
 const MedicalRecord = require("../models/medicalRecord");
 const bcrypt = require("bcryptjs");
 
+exports.GetMyProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const doctor = await Doctor.findOne({ user: userId });
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: "Doctor profile not found" });
+    }
+    res.status(200).json({ success: true, doctor });
+  } catch (error) {
+    console.error("GetMyProfile Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 exports.GetDoctorStats = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -90,6 +104,7 @@ exports.AddDoctorDetails = async (req, res) => {
       degrees,
       experience,
       licenseNumber,
+      pmdcNumber,
       clinicName,
       clinicAddress,
       availableDays,
@@ -108,10 +123,15 @@ exports.AddDoctorDetails = async (req, res) => {
       existingProfile.degrees = degrees;
       existingProfile.experience = experience;
       existingProfile.licenseNumber = licenseNumber;
+      if (pmdcNumber !== undefined) existingProfile.pmdcNumber = pmdcNumber;
       existingProfile.clinicName = clinicName;
       existingProfile.clinicAddress = clinicAddress;
-      existingProfile.availableDays = availableDays;
-      existingProfile.availableTime = availableTime;
+      // Store in nested availability object (matches schema)
+      existingProfile.availability = {
+        ...existingProfile.availability?.toObject?.() || {},
+        availableDays: availableDays,
+        availableTime: availableTime,
+      };
       await existingProfile.save();
       console.log("✅ Doctor profile updated successfully");
       console.log("Updated Profile:", JSON.stringify(existingProfile, null, 2));
@@ -130,10 +150,13 @@ exports.AddDoctorDetails = async (req, res) => {
       degrees,
       experience,
       licenseNumber,
+      pmdcNumber: pmdcNumber || '',
       clinicName,
       clinicAddress,
-      availableDays,
-      availableTime,
+      availability: {
+        availableDays: availableDays,
+        availableTime: availableTime,
+      },
       isApproved: isApproved ?? false,
       ratings: ratings ?? [],
       reviews: reviews ?? [],
@@ -316,11 +339,11 @@ exports.UpdateAvailability = async (req, res) => {
       { user: userId },
       {
         $set: {
-          availableDays: availableDays,
-          availableTime: availableTime,
-          unavailableDates: unavailableDates,
-          bufferTime: bufferTime,
-          emergencySlots: emergencySlots,
+          'availability.availableDays': availableDays,
+          'availability.availableTime': availableTime,
+          'availability.unavailableDates': unavailableDates,
+          'availability.bufferTime': bufferTime,
+          'availability.emergencySlots': emergencySlots,
         },
       },
       { new: true },
@@ -359,9 +382,9 @@ exports.GetAvailability = async (req, res) => {
     res.status(200).json({
       success: true,
       availability: {
-        availableDays: doctor.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-        availableTime: doctor.availableTime || { start: '09:00', end: '17:00' },
-        unavailableDates: doctor.unavailableDates || []
+        availableDays: doctor.availability?.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        availableTime: doctor.availability?.availableTime || { start: '09:00', end: '17:00' },
+        unavailableDates: doctor.availability?.unavailableDates || []
       }
     });
   } catch (error) {

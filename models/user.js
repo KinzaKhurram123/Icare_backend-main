@@ -94,6 +94,30 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    cnic: {
+      type: String,
+      default: '',
+    },
+    height: {
+      type: String,
+      default: '',
+    },
+    weight: {
+      type: String,
+      default: '',
+    },
+    address: {
+      type: String,
+      default: '',
+    },
+    emergencyContact1: {
+      type: String,
+      default: '',
+    },
+    emergencyContact2: {
+      type: String,
+      default: '',
+    },
     verificationDetails: {
       licenseNumber: { type: String, default: "" },
       location: { type: String, default: "" },

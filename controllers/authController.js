@@ -167,7 +167,9 @@ exports.loginUser = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (user && (await bcrypt.compare(password, user.password))) {
-    if (!user.isApproved) {
+    // Only professional roles need admin approval — Patients and Students can login freely
+    const requiresApproval = ['Doctor', 'Pharmacy', 'Laboratory', 'Instructor'];
+    if (!user.isApproved && requiresApproval.includes(user.role)) {
       console.log("❌ LOGIN FAILED (Pending Approval):", email);
       return res.status(403).json({ message: "Account is pending admin verification" });
     }

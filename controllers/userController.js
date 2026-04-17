@@ -24,7 +24,12 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
     try {
         console.log('📝 UPDATE PROFILE body:', req.body);
-        const { name, phoneNumber, profilePicture, bio, age, qualification } = req.body;
+        console.log('📝 Keys received:', Object.keys(req.body));
+        console.log('📝 cnic:', req.body.cnic);
+        console.log('📝 height:', req.body.height);
+        console.log('📝 weight:', req.body.weight);
+        console.log('📝 address:', req.body.address);
+        const { name, phoneNumber, profilePicture, bio, age, qualification, cnic, height, weight, address, emergencyContact1, emergencyContact2 } = req.body;
 
         const user = await User.findById(req.user.id);
 
@@ -34,12 +39,20 @@ exports.updateUserProfile = async (req, res) => {
 
         if (name) user.name = name;
         if (phoneNumber) user.phoneNumber = phoneNumber;
-        if (profilePicture) user.profileImage = profilePicture; // store in profileImage field
+        if (profilePicture) user.profileImage = profilePicture;
         if (bio !== undefined) user.bio = bio;
         if (age !== undefined) user.age = age;
         if (qualification !== undefined) user.qualification = qualification;
+        if (cnic !== undefined) user.cnic = cnic;
+        if (height !== undefined) user.height = height;
+        if (weight !== undefined) user.weight = weight;
+        if (address !== undefined) user.address = address;
+        if (emergencyContact1 !== undefined) user.emergencyContact1 = emergencyContact1;
+        if (emergencyContact2 !== undefined) user.emergencyContact2 = emergencyContact2;
 
         await user.save();
+
+        console.log('✅ Saved user cnic:', user.cnic, 'height:', user.height, 'weight:', user.weight, 'address:', user.address);
 
         const updatedUser = await User.findById(req.user.id).select('-password');
         res.json(updatedUser);
