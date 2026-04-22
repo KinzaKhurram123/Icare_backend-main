@@ -19,9 +19,9 @@ exports.saveIntakeNotes = async (req, res) => {
     const { isFinalized } = req.body;
     const notes = await IntakeNotes.findOneAndUpdate(
       { appointment: appointmentId },
-      { 
-        ...req.body, 
-        patient: appointment.patient, 
+      {
+        ...req.body,
+        patient: appointment.patient,
         doctor: appointment.doctor,
         finalizedAt: isFinalized ? new Date() : undefined
       },
@@ -73,9 +73,9 @@ exports.saveSoapNotes = async (req, res) => {
     const { isFinalized } = req.body;
     const notes = await SoapNotes.findOneAndUpdate(
       { appointment: appointmentId },
-      { 
-        ...req.body, 
-        patient: appointment.patient, 
+      {
+        ...req.body,
+        patient: appointment.patient,
         doctor: appointment.doctor,
         finalizedAt: isFinalized ? new Date() : undefined
       },
@@ -115,16 +115,16 @@ exports.createReferral = async (req, res) => {
   try {
     const doctorId = req.user._id;
     const { patientId, referredTo, reason, clinicalNotes, attachedRecords } = req.body;
-    
-    const referral = await Referral.create({ 
-      doctor: doctorId, 
-      patient: patientId, 
-      referredTo, 
+
+    const referral = await Referral.create({
+      doctor: doctorId,
+      patient: patientId,
+      referredTo,
       reason,
       clinicalNotes,
       attachedRecords: attachedRecords || []
     });
-    
+
     // Notify target doctor
     await Notification.create({
       user: referredTo,
@@ -162,7 +162,7 @@ exports.getMyReferrals = async (req, res) => {
       .populate('patient', 'name email phoneNumber')
       .populate('referredTo', 'name email specialization')
       .sort({ createdAt: -1 });
-    
+
     res.status(200).json({ success: true, referrals });
   } catch (error) {
     console.error("Get My Referrals Error:", error);
@@ -178,7 +178,7 @@ exports.getReceivedReferrals = async (req, res) => {
       .populate('patient', 'name email phoneNumber')
       .populate('attachedRecords')
       .sort({ createdAt: -1 });
-    
+
     res.status(200).json({ success: true, referrals });
   } catch (error) {
     console.error("Get Received Referrals Error:", error);
@@ -317,10 +317,20 @@ exports.assignProgram = async (req, res) => {
     const StudentCourseEnrollment = require('../models/studentCourseEnrollment');
     const InstructorCourse = require('../models/instructorCourse');
 
-    const course = await InstructorCourse.findById(courseId);
+    // Try to find in InstructorCourse first, then fall back to Course
+    let course = await InstructorCourse.findById(courseId);
+    if (!course) {
+      const Course = require("../models/course");
+      course = await Course.findById(courseId);
+    }
+
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
-    const totalVideos = Array.isArray(course.videos) ? course.videos.length : 0;
+    const totalVideos = (course.videos && Array.isArray(course.videos))
+      ? course.videos.length
+      : (course.modules && Array.isArray(course.modules))
+        ? course.modules.reduce((sum, m) => sum + (m.lessons && Array.isArray(m.lessons) ? m.lessons.length : 0), 0)
+        : 0;
 
     const enrollment = await StudentCourseEnrollment.create({
       user: patientId,
@@ -345,7 +355,7 @@ exports.getHealthJourney = async (req, res) => {
     // Simple timeline aggregation from appointments and medical records
     const MedicalRecord = require('../models/medicalRecord');
     const records = await MedicalRecord.find({ patient: userId }).populate('doctor', 'name').sort({ createdAt: -1 });
-    
+
     const timeline = records.map(r => ({
       recordId: r._id.toString(), // Add record ID for navigation
       date: r.createdAt,
@@ -379,9 +389,9 @@ exports.getLifestyleSummary = async (req, res) => {
     const patientId = req.user._id;
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     const logs = await LifestyleLog.find({ patient: patientId, createdAt: { $gte: startOfDay } });
-    
+
     // Aggregate daily metrics
     const metrics = {
       water: "0 / 2.5 L",
@@ -410,9 +420,9 @@ exports.getLifestyleSummary = async (req, res) => {
 
     // Overall progress: average of all 4 goals
     const progress = (
-      Math.min(water / 2.5, 1) + 
-      Math.min(steps / 10000, 1) + 
-      Math.min(sleep / 8, 1) + 
+      Math.min(water / 2.5, 1) +
+      Math.min(steps / 10000, 1) +
+      Math.min(sleep / 8, 1) +
       Math.min(calories / 2000, 1)
     ) / 4;
 

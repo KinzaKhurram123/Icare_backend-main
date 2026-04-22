@@ -11,38 +11,47 @@ exports.getInstructorAnalytics = async (req, res) => {
     }
 
     const instructorId = instructor._id;
-    const courses = await InstructorCourse.find({ instructor: instructorId });
-    const courseIds = courses.map((c) => c._id);
+    console.log(`Analyzing data for Instructor: ${instructorId} (User: ${userId})`);
+
+    // Get all courses from NEW collection
+    const instructorCourses = await InstructorCourse.find({ instructor: instructorId });
+
+    // Get all courses from LEGACY collection
+    const Course = require("../models/course");
+    const legacyCourses = await Course.find({ instructor: userId });
+
+    const allCourses = [...instructorCourses, ...legacyCourses];
+    const allCourseIds = allCourses.map((c) => c._id);
 
     // 1. Total Enrollments
     const enrollments = await StudentCourseEnrollment.find({
-      course: { $in: courseIds },
+      course: { $in: allCourseIds },
     });
 
     // 2. Overall Completion Rate
     const completedCount = enrollments.filter((e) => e.status === "completed").length;
     const totalEnrollments = enrollments.length;
-    const overallCompletionRate = totalEnrollments > 0 
-      ? Math.round((completedCount / totalEnrollments) * 100) 
+    const overallCompletionRate = totalEnrollments > 0
+      ? Math.round((completedCount / totalEnrollments) * 100)
       : 0;
 
     // 3. Course-specific engagement
-    const courseEngagement = await Promise.all(courses.map(async (course) => {
+    const courseEngagement = allCourses.map((course) => {
       const courseEnrollments = enrollments.filter(e => e.course.toString() === course._id.toString());
       const courseCompleted = courseEnrollments.filter(e => e.status === "completed").length;
       const rate = courseEnrollments.length > 0 ? Math.round((courseCompleted / courseEnrollments.length) * 100) : 0;
-      
-      // Calculate "dropoff" - for now using a simple logic: if progress < 50%
+
+      // Calculate "dropoff" based on actual progress if available, else mock
       const dropoffs = courseEnrollments.filter(e => (e.progress?.percent || 0) < 50).length;
-      
+
       return {
         courseId: course._id,
         title: course.title,
         enrollments: courseEnrollments.length,
         completion: rate,
-        dropoff: dropoffs > 0 ? `Module ${Math.floor(Math.random() * 3) + 1}` : "None" // Mocking dropoff point
+        dropoff: dropoffs > 0 ? `Video ${Math.floor(Math.random() * 2) + 1}` : "None"
       };
-    }));
+    });
 
     // 4. Monthly trends (Mocked for now)
     const trends = [

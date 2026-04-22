@@ -42,13 +42,23 @@ app.use(
   require("./routes/instructorCoursesRoutes"),
 );
 app.use(
+  "/api/instructor/courses",
+  require("./routes/instructorCoursesRoutes"),
+);
+app.use(
   "/api/instructors/precautions",
   require("./routes/instructorPrecautionsRoutes"),
 );
+app.use(
+  "/api/instructor/precautions",
+  require("./routes/instructorPrecautionsRoutes"),
+);
 app.use("/api/instructors", require("./routes/instructorRoutes"));
+app.use("/api/instructor", require("./routes/instructorRoutes"));
 app.use("/api/students/courses", require("./routes/studentCoursesRoutes"));
 app.use("/api/students", require("./routes/studentRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
+app.use("/api/videos", require("./routes/videoUploadRoutes"));
 app.use("/api/medical-records", require("./routes/medicalRecordRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use(

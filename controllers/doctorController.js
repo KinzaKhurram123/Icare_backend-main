@@ -26,17 +26,17 @@ exports.GetDoctorStats = async (req, res) => {
     }
 
     const appointments = await Appointment.find({ doctor: userId });
-    
+
     const totalPatients = new Set(appointments.map(a => a.patient.toString())).size;
     const completedAppointments = appointments.filter(a => a.status === 'completed').length;
     const pendingAppointments = appointments.filter(a => a.status === 'pending').length;
-    
+
     // Revenue logic: 1500 per completed appointment
     const revenue = completedAppointments * 1500;
-    
+
     // Avg Rating
-    const avgRating = doctor.ratings && doctor.ratings.length > 0 
-      ? doctor.ratings.reduce((a, b) => a + b, 0) / doctor.ratings.length 
+    const avgRating = doctor.ratings && doctor.ratings.length > 0
+      ? doctor.ratings.reduce((a, b) => a + b, 0) / doctor.ratings.length
       : 4.8; // Default to 4.8 if no ratings yet
 
     // Task: Real Satisfaction Metric (Req 6.13)
@@ -69,10 +69,10 @@ exports.GetPatientFullHistory = async (req, res) => {
     const records = await MedicalRecord.find({ patient: patientId })
       .populate('doctor', 'name specialization')
       .sort({ createdAt: -1 });
-    
+
     const { LifestyleLog } = require('../models/clinical');
     const lifestyle = await LifestyleLog.find({ patient: patientId }).sort({ createdAt: -1 }).limit(10);
-    
+
     // Fixed: Import model correctly (default export) and use correct field 'patient'
     const Vital = require('../models/vital');
     const vitals = await Vital.find({ patient: patientId }).sort({ createdAt: -1 }).limit(5);
@@ -402,10 +402,20 @@ exports.AssignHealthProgram = async (req, res) => {
     const StudentCourseEnrollment = require('../models/studentCourseEnrollment');
     const InstructorCourse = require('../models/instructorCourse');
 
-    const course = await InstructorCourse.findById(courseId);
+    // Try to find in InstructorCourse first, then fall back to Course
+    let course = await InstructorCourse.findById(courseId);
+    if (!course) {
+      const Course = require("../models/course");
+      course = await Course.findById(courseId);
+    }
+
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
-    const totalVideos = Array.isArray(course.videos) ? course.videos.length : 0;
+    const totalVideos = (course.videos && Array.isArray(course.videos))
+      ? course.videos.length
+      : (course.modules && Array.isArray(course.modules))
+        ? course.modules.reduce((sum, m) => sum + (m.lessons && Array.isArray(m.lessons) ? m.lessons.length : 0), 0)
+        : 0;
 
     const enrollment = await StudentCourseEnrollment.create({
       user: id,

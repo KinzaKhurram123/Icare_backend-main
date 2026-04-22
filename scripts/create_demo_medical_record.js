@@ -9,6 +9,10 @@ const Laboratory = require('../models/laboratory');
 const LabBooking = require('../models/labBooking');
 const Notification = require('../models/notification');
 
+
+
+
+
 mongoose.connect(process.env.MONGO_URI).then(async () => {
 
   // 1. Ensure patient@gmail.com exists

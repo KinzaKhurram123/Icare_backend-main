@@ -22,9 +22,20 @@ exports.createPrecaution = async (req, res) => {
 
 exports.listPrecautions = async (req, res) => {
   try {
-    const { instructorId } = req.query;
+    let { instructorId } = req.query;
     const filter = {};
-    if (instructorId) filter.instructor = instructorId;
+
+    if (instructorId) {
+      // If the provided ID is actually a User ID, find the Instructor ID
+      const instructor = await Instructor.findOne({ $or: [{ _id: instructorId }, { user: instructorId }] });
+      if (instructor) {
+        filter.instructor = instructor._id;
+      } else {
+        // If not found, it might be a valid ID for a deleted instructor, still filter by it
+        filter.instructor = instructorId;
+      }
+    }
+
     const list = await InstructorPrecaution.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: list.length, precautions: list });
   } catch (error) {

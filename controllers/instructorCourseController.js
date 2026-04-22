@@ -3,6 +3,7 @@ const InstructorCourse = require("../models/instructorCourse");
 const StudentCourseEnrollment = require("../models/studentCourseEnrollment");
 const User = require("../models/user");
 const Notification = require("../models/notification");
+const Course = require("../models/course");
 
 exports.assignCourse = async (req, res) => {
   try {
@@ -12,11 +13,21 @@ exports.assignCourse = async (req, res) => {
       return res.status(403).json({ message: "Instructor profile not found" });
 
     const { targetUserId, courseId } = req.body;
-    
-    const course = await InstructorCourse.findById(courseId);
+
+    // Try to find in InstructorCourse first, then fall back to Course
+    let course = await InstructorCourse.findById(courseId);
+
+    if (!course) {
+      course = await Course.findById(courseId);
+    }
+
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    if (course.instructor.toString() !== instructor._id.toString()) {
+    // Authorization check (instructor must own the course)
+    const courseInstructorId = course.instructor ? course.instructor.toString() : null;
+    if (!courseInstructorId) return res.status(400).json({ message: "Course has no associated instructor" });
+
+    if (courseInstructorId !== instructor._id.toString() && courseInstructorId !== userId.toString()) {
       return res.status(403).json({ message: "Not authorized to assign this course" });
     }
 
@@ -27,7 +38,11 @@ exports.assignCourse = async (req, res) => {
     const existing = await StudentCourseEnrollment.findOne({ user: targetUserId, course: courseId });
     if (existing) return res.status(400).json({ message: "User already enrolled in this course" });
 
-    const totalVideos = Array.isArray(course.videos) ? course.videos.length : 0;
+    const totalVideos = (course.videos && Array.isArray(course.videos))
+      ? course.videos.length
+      : (course.modules && Array.isArray(course.modules))
+        ? course.modules.reduce((sum, m) => sum + (m.lessons && Array.isArray(m.lessons) ? m.lessons.length : 0), 0)
+        : 0;
 
     const enrollment = await StudentCourseEnrollment.create({
       user: targetUserId,
@@ -41,8 +56,8 @@ exports.assignCourse = async (req, res) => {
       user: targetUserId,
       title: "New Course Assigned",
       message: `Instructor ${req.user.name} has assigned you a new course: ${course.title}.`,
-      type: "course_assigned",
-      metadata: { courseId: course._id, enrollmentId: enrollment._id },
+      type: "general",
+      data: { courseId: course._id, enrollmentId: enrollment._id },
     });
 
     res.status(201).json({ success: true, enrollment });
@@ -76,15 +91,40 @@ exports.createCourse = async (req, res) => {
 exports.listCourses = async (req, res) => {
   try {
     const { instructorId, visibility, q } = req.query;
-    const filter = {};
-    if (instructorId) filter.instructor = instructorId;
-    if (visibility) filter.visibility = visibility;
-    if (q) filter.title = { $regex: q, $options: "i" };
-    const courses = await InstructorCourse.find(filter).populate(
-      "instructor",
-      "user",
-    );
-    res.status(200).json({ success: true, count: courses.length, courses });
+
+    let allCourses = [];
+
+    // 1. Search in NEW collection
+    const filterNew = {};
+    if (instructorId) filterNew.instructor = instructorId;
+    if (visibility) filterNew.visibility = visibility;
+    if (q) filterNew.title = { $regex: q, $options: "i" };
+
+    const newCourses = await InstructorCourse.find(filterNew).populate("instructor", "user");
+    allCourses = [...newCourses];
+
+    // 2. Search in LEGACY collection
+    // Note: Legacy Course model uses User ID for instructor if it came from the old flow
+    // If instructorId was passed, it might be an Instructor Profile ID. 
+    // We should try to find the User ID for that instructor first.
+    const Instructor = require("../models/instructor");
+    const Course = require("../models/course");
+
+    let legacyUserId = instructorId;
+    if (instructorId && mongoose.Types.ObjectId.isValid(instructorId)) {
+      const instr = await Instructor.findById(instructorId);
+      if (instr) legacyUserId = instr.user;
+    }
+
+    const filterLegacy = {};
+    if (legacyUserId) filterLegacy.instructor = legacyUserId;
+    if (visibility === 'public') filterLegacy.isPublished = true;
+    if (q) filterLegacy.title = { $regex: q, $options: "i" };
+
+    const legacyCourses = await Course.find(filterLegacy);
+    allCourses = [...allCourses, ...legacyCourses];
+
+    res.status(200).json({ success: true, count: allCourses.length, courses: allCourses });
   } catch (error) {
     console.error("List Courses Error:", error);
     res.status(500).json({ message: "Internal server error" });

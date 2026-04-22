@@ -14,9 +14,17 @@ exports.getStats = async (req, res) => {
     const instructorId = instructor._id;
 
     // 1. Total Courses & Public Courses
-    const courses = await InstructorCourse.find({ instructor: instructorId });
-    const totalCourses = courses.length;
-    const publicCourses = courses.filter((c) => c.visibility === "public").length;
+    const instructorCourses = await InstructorCourse.find({ instructor: instructorId });
+
+    const Course = require("../models/course");
+    const legacyCourses = await Course.find({ instructor: userId });
+
+    const allCourses = [...instructorCourses, ...legacyCourses];
+    const totalCourses = allCourses.length;
+
+    // For public count, check visibility (instructorCourses) or isPublished (legacyCourses)
+    const publicCount = instructorCourses.filter((c) => c.visibility === "public").length +
+      legacyCourses.filter((c) => c.isPublished).length;
 
     // 2. Total Precautions
     const totalPrecautions = await InstructorPrecaution.countDocuments({
@@ -24,22 +32,22 @@ exports.getStats = async (req, res) => {
     });
 
     // 3. Total Students (Unique enrollments in instructor's courses)
-    const courseIds = courses.map((c) => c._id);
+    const allCourseIds = allCourses.map((c) => c._id);
     const enrollments = await StudentCourseEnrollment.find({
-      course: { $in: courseIds },
+      course: { $in: allCourseIds },
     });
     const uniqueStudents = new Set(enrollments.map((e) => e.user.toString())).size;
 
     // 4. Avg. Rating & Revenue (Placeholder logic - expand when reviews/payments are added)
     // For now, returning realistic mock-calculated values or 0
-    const avgRating = 4.8; 
+    const avgRating = 4.8;
     const revenue = enrollments.length * 1200; // Mock revenue: 1200 per enrollment
 
     res.status(200).json({
       success: true,
       stats: {
         totalCourses,
-        publicCourses,
+        publicCourses: publicCount,
         totalStudents: uniqueStudents,
         totalPrecautions,
         avgRating,
@@ -174,35 +182,56 @@ exports.getAssignedLearners = async (req, res) => {
   try {
     const userId = req.user._id;
     const instructor = await Instructor.findOne({ user: userId });
+    console.log(`Instructor search for user ${userId}:`, instructor ? `Found (ID: ${instructor._id})` : "Not Found");
+
     if (!instructor) {
       return res.status(404).json({ message: "Instructor profile not found" });
     }
 
-    // Get all courses by this instructor
-    const courses = await InstructorCourse.find({ instructor: instructor._id });
-    const courseIds = courses.map((c) => c._id);
+    // Get all courses from NEW collection
+    const instructorCourses = await InstructorCourse.find({ instructor: instructor._id });
+
+    // Get all courses from LEGACY collection
+    const Course = require("../models/course");
+    const legacyCourses = await Course.find({ instructor: userId });
+
+    console.log(`Courses for instructor ${instructor._id}: New=${instructorCourses.length}, Legacy=${legacyCourses.length}`);
+
+    const instructorCourseIds = instructorCourses.map((c) => c._id);
+    const legacyCourseIds = legacyCourses.map((c) => c._id);
+    const allCourseIds = [...instructorCourseIds, ...legacyCourseIds];
 
     // Get all enrollments for these courses
     const enrollments = await StudentCourseEnrollment.find({
-      course: { $in: courseIds },
+      course: { $in: allCourseIds },
     })
       .populate('user', 'name email role')
-      .populate('course', 'title')
       .sort({ enrolledAt: -1 });
 
-    // Calculate progress for each enrollment
+    console.log(`Enrollments found for ${allCourseIds.length} courses: ${enrollments.length}`);
+
+    // Since 'course' ref points to InstructorCourse, legacy courses won't populate automatically.
+    // We create a map for quick lookup
+    const courseMap = {};
+    instructorCourses.forEach(c => courseMap[c._id.toString()] = { title: c.title });
+    legacyCourses.forEach(c => courseMap[c._id.toString()] = { title: c.title });
+
+    // Calculate progress for each enrollment and format for frontend
     const learners = enrollments.map((enrollment) => {
-      const totalModules = enrollment.course?.modules?.length || 0;
-      const completedModules = enrollment.completedModules?.length || 0;
-      const progress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+      const courseIdStr = enrollment.course ? enrollment.course.toString() : null;
+      const courseData = courseIdStr ? (courseMap[courseIdStr] || { title: "Deleted Course" }) : { title: "Unknown Course" };
+
+      const percent = enrollment.progress?.percent ?? 0;
 
       return {
         _id: enrollment._id,
-        user: enrollment.user,
-        course: enrollment.course,
-        progress,
-        enrolledAt: enrollment.enrolledAt,
-        lastAccessed: enrollment.lastAccessed,
+        name: enrollment.user?.name || 'Learner',
+        email: enrollment.user?.email || '',
+        role: enrollment.user?.role || 'Patient',
+        courseTitle: courseData.title,
+        progress: percent,
+        enrolledAt: enrollment.enrolledAt || enrollment.purchasedAt,
+        lastAccessed: enrollment.updatedAt,
       };
     });
 

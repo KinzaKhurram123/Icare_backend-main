@@ -9,6 +9,7 @@ router.get('/get_all_instructors', getAllInstructors);
 router.get('/stats', protect, getStats);
 router.get('/me', protect, getMyInstructorProfile);
 router.get('/assigned-learners', protect, getAssignedLearners);
+router.get('/learners', protect, getAssignedLearners);
 router.get('/:id', getInstructorById);
 
 module.exports = router;
