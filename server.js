@@ -9,6 +9,19 @@ const agoraRoutes = require("./routes/agoraRoutes");
 const pusher = require("./config/pusher.config");
 
 dotenv.config();
+
+// Validate required environment variables
+function validateRequiredEnvVars() {
+  const requiredVars = ['JWT_SECRET'];
+  const missing = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+validateRequiredEnvVars();
+
 connectDB();
 const app = express();
 app.use(express.json());
