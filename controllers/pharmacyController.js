@@ -103,3 +103,56 @@ exports.getPharmacyProfile = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+exports.getTopSellingProducts = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const pharmacy = await Pharmacy.findOne({ user: userId });
+        if (!pharmacy) {
+            return res.status(404).json({ message: 'Pharmacy profile not found' });
+        }
+
+        const PharmacyOrder = require('../models/pharmacyOrder');
+        
+        // Get all completed orders for this pharmacy
+        const orders = await PharmacyOrder.find({
+            pharmacy: pharmacy._id,
+            status: 'completed'
+        });
+
+        // Count sales per product
+        const productSales = {};
+        orders.forEach(order => {
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    const productId = item.product?.toString() || item.productName;
+                    if (productId) {
+                        if (!productSales[productId]) {
+                            productSales[productId] = {
+                                productId,
+                                productName: item.productName || 'Unknown',
+                                quantity: 0,
+                                revenue: 0
+                            };
+                        }
+                        productSales[productId].quantity += item.quantity || 0;
+                        productSales[productId].revenue += (item.price || 0) * (item.quantity || 0);
+                    }
+                });
+            }
+        });
+
+        // Convert to array and sort by quantity
+        const topProducts = Object.values(productSales)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 10);
+
+        res.status(200).json({
+            success: true,
+            topProducts
+        });
+    } catch (error) {
+        console.error("Get Top Selling Products Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

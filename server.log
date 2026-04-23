@@ -1,0 +1,14 @@
+nohup: ignoring input
+=== PUSHER ENVIRONMENT VARIABLES ===
+PUSHER_APP_ID: ✓ Set
+PUSHER_KEY/PUSHER_APP_KEY: ✓ Set
+PUSHER_SECRET/PUSHER_APP_SECRET: ✓ Set
+PUSHER_CLUSTER/PUSHER_APP_CLUSTER: ✓ Set
+⚠️  Firebase credentials incomplete - Push notifications disabled
+   For local testing, this is OK. Configure Firebase for production.
+PUSHER_CLUSTER: undefined
+PUSHER_APP_ID: 2125244
+PUSHER_KEY: undefined
+Server running on port 5000
+✅ Pusher connection successful!
+MongoDB Connected

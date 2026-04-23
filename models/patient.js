@@ -23,6 +23,12 @@ const patientSchema = new mongoose.Schema({
 
     height: Number,
     weight: Number,
+    points: { type: Number, default: 0 },
+    badges: [{
+        name: String,
+        icon: String,
+        earnedAt: { type: Date, default: Date.now }
+    }],
     isVerified: { type: Boolean, default: false },
     appointments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' }],
 }, { timestamps: true });

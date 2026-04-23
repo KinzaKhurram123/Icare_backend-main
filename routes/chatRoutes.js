@@ -1,8 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const protect = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const pusherAuth = require("../middleware/pusherAuth");
 const pusher = require("../config/pusher.config");
+const multer = require("multer");
+const path = require("path");
+
+// Configure Multer for chat uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/chat/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 
 const {
   sendMessage,
@@ -44,6 +62,20 @@ router.use(protect);
 
 router.get("/conversations", getConversations);
 router.post("/send", sendMessage);
+router.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded" });
+  }
+
+  const fileUrl = `${req.protocol}://${req.get("host")}/uploads/chat/${req.file.filename}`;
+
+  res.status(200).json({
+    success: true,
+    fileUrl: fileUrl,
+    fileName: req.file.originalname,
+    fileType: req.file.mimetype,
+  });
+});
 router.get("/history/:userId", getChatHistory);
 router.put("/read", markAsRead);
 router.post("/typing", typingIndicator);

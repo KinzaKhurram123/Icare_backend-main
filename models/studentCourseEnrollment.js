@@ -19,6 +19,13 @@ const enrollmentSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'completed'], default: 'active' },
   purchasedAt: { type: Date, default: Date.now },
   progress: progressSchema,
+  quizResults: [{
+    moduleIndex: Number,
+    score: Number,
+    totalQuestions: Number,
+    passed: Boolean,
+    completedAt: { type: Date, default: Date.now }
+  }],
   certificate: certificateSchema
 }, { timestamps: true });
 

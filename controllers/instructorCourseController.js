@@ -1,5 +1,56 @@
 const Instructor = require("../models/instructor");
 const InstructorCourse = require("../models/instructorCourse");
+const StudentCourseEnrollment = require("../models/studentCourseEnrollment");
+const User = require("../models/user");
+const Notification = require("../models/notification");
+
+exports.assignCourse = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const instructor = await Instructor.findOne({ user: userId });
+    if (!instructor)
+      return res.status(403).json({ message: "Instructor profile not found" });
+
+    const { targetUserId, courseId } = req.body;
+    
+    const course = await InstructorCourse.findById(courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
+    if (course.instructor.toString() !== instructor._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to assign this course" });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) return res.status(404).json({ message: "Target user not found" });
+
+    // Check if already enrolled
+    const existing = await StudentCourseEnrollment.findOne({ user: targetUserId, course: courseId });
+    if (existing) return res.status(400).json({ message: "User already enrolled in this course" });
+
+    const totalVideos = Array.isArray(course.videos) ? course.videos.length : 0;
+
+    const enrollment = await StudentCourseEnrollment.create({
+      user: targetUserId,
+      course: courseId,
+      status: "active",
+      progress: { completedVideos: 0, totalVideos, percent: 0 },
+    });
+
+    // Notify the user
+    await Notification.create({
+      user: targetUserId,
+      title: "New Course Assigned",
+      message: `Instructor ${req.user.name} has assigned you a new course: ${course.title}.`,
+      type: "course_assigned",
+      metadata: { courseId: course._id, enrollmentId: enrollment._id },
+    });
+
+    res.status(201).json({ success: true, enrollment });
+  } catch (error) {
+    console.error("Assign Course Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 exports.createCourse = async (req, res) => {
   try {

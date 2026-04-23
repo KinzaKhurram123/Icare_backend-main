@@ -18,11 +18,11 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded token:", decoded);
 
-      req.user = await User.findById(decoded.id).select("-password");
+      const user = await User.findById(decoded.id).select("-password");
 
-      console.log("User fetched:", req.user ? "Yes" : "No");
+      console.log("User fetched:", user ? "Yes" : "No");
 
-      if (!req.user) {
+      if (!user) {
         console.log("User not found in database");
         return res.status(401).json({
           success: false,
@@ -30,7 +30,9 @@ const protect = async (req, res, next) => {
         });
       }
 
-      req.user.id = req.user._id.toString();
+      req.user = user;
+      // Ensure both _id and id are available for compatibility
+      req.user.id = user._id.toString();
 
       console.log("Auth successful for:", req.user.email);
       next();
@@ -50,4 +52,16 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = protect;
+// Admin middleware
+const admin = (req, res, next) => {
+  if (req.user && (req.user.role === 'Admin' || req.user.role === 'Super_Admin')) {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      message: 'Not authorized as admin'
+    });
+  }
+};
+
+module.exports = { protect, admin };

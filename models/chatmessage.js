@@ -23,10 +23,10 @@ const chatMessageSchema = new mongoose.Schema(
     },
     attachments: [
       {
-        url: String,
-        type: String,
-        name: String,
-      },
+        url: { type: String },
+        fileType: { type: String },
+        name: { type: String },
+      }
     ],
   },
   { timestamps: true },

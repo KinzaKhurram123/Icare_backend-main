@@ -17,7 +17,9 @@ const pharmacyOrderSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'completed', 'cancelled'], default: 'pending' },
   cancelledAt: Date,
   cancellationReason: String,
-  orderNumber: { type: String, unique: true }
+  orderNumber: { type: String, unique: true },
+  medicalRecord: { type: mongoose.Schema.Types.ObjectId, ref: 'MedicalRecord' },
+  prescriptionText: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model('PharmacyOrder', pharmacyOrderSchema);

@@ -1,6 +1,23 @@
 const express = require('express');
-const protect = require('../middleware/authMiddleware');
-const { AddLaboratoryDetails, getAllLaboratories, getLaboratoryById, FilterLaboratories, AddLaboratoryReview, getLaboratoryProfile } = require('../controllers/laboratoryController');
+const { protect } = require('../middleware/authMiddleware');
+const { 
+  AddLaboratoryDetails, 
+  getAllLaboratories, 
+  getLaboratoryById, 
+  FilterLaboratories, 
+  AddLaboratoryReview, 
+  getLaboratoryProfile,
+  uploadStructuredResults,
+  getStructuredResults,
+  getResultHistory,
+  getProcessingTimeMetrics,
+  getQualityMetrics,
+  getVolumeTrends,
+  getUrgentCasesStats,
+  getRevenueAnalytics,
+  getPeakHoursAnalysis,
+  getComparativeAnalytics
+} = require('../controllers/laboratoryController');
 const { createBooking, getMyBookings, getLabBookings, getBookingById, updateBooking, cancelBooking, deleteBooking } = require('../controllers/labBookingController');
 const multer = require('multer');
 const path = require('path');
@@ -35,6 +52,21 @@ router.post('/bookings/:id/upload-report', protect, upload.single('report'), (re
     const reportUrl = `${req.protocol}://${req.get('host')}/uploads/reports/${req.file.filename}`;
     res.status(200).json({ success: true, reportUrl });
 });
+
+// Structured results endpoints
+router.post('/bookings/:id/upload-structured-results', protect, uploadStructuredResults);
+router.get('/bookings/:id/structured-results', protect, getStructuredResults);
+router.get('/results/history/:patientId/:testParameter', protect, getResultHistory);
+
+// Analytics endpoints
+router.get('/:labId/analytics/processing-time', protect, getProcessingTimeMetrics);
+router.get('/:labId/analytics/quality', protect, getQualityMetrics);
+router.get('/:labId/analytics/volume', protect, getVolumeTrends);
+router.get('/:labId/analytics/urgent-cases', protect, getUrgentCasesStats);
+router.post('/:labId/analytics/revenue', protect, getRevenueAnalytics);
+router.get('/:labId/analytics/peak-hours', protect, getPeakHoursAnalysis);
+router.post('/:labId/analytics/comparative', protect, getComparativeAnalytics);
+
 router.get('/:id', getLaboratoryById);
 
 module.exports = router;

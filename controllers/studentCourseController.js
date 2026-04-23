@@ -7,7 +7,17 @@ const certNumber = () => `CERT-${Date.now().toString().slice(-6)}-${Math.random(
 exports.listPublicCourses = async (req, res) => {
   try {
     const { q } = req.query;
+    const userRole = req.user.role;
+    
     const filter = { visibility: 'public' };
+    
+    // Enforce target audience filtering based on role
+    if (userRole === 'Patient') {
+      filter.targetAudience = 'Patient';
+    } else if (userRole === 'Doctor' || userRole === 'Student') {
+      filter.targetAudience = 'Doctor';
+    }
+
     if (q) filter.title = { $regex: q, $options: 'i' };
     const courses = await InstructorCourse.find(filter)
       .populate({
@@ -87,15 +97,25 @@ exports.updateProgress = async (req, res) => {
   try {
     const userId = req.user._id;
     const { id } = req.params;
-    const { completedVideos } = req.body;
+    const { completedVideos, quizResult } = req.body;
     const enr = await StudentCourseEnrollment.findById(id).populate('course');
     if (!enr) return res.status(404).json({ message: 'Enrollment not found' });
     if (enr.user.toString() !== userId.toString()) return res.status(403).json({ message: 'Not authorized' });
+    
+    // Update quiz results if provided
+    if (quizResult) {
+      if (!enr.quizResults) enr.quizResults = [];
+      enr.quizResults.push({
+        ...quizResult,
+        completedAt: new Date()
+      });
+    }
+
     const total = Array.isArray(enr.course.videos) ? enr.course.videos.length : (enr.progress?.totalVideos || 0);
-    const comp = Math.max(0, Math.min(Number(completedVideos || 0), total));
+    const comp = completedVideos !== undefined ? Math.max(0, Math.min(Number(completedVideos), total)) : (enr.progress?.completedVideos || 0);
     const percent = total ? Math.round((comp / total) * 100) : 100;
     enr.progress = { completedVideos: comp, totalVideos: total, percent };
-    if (percent === 100) {
+    if (percent === 100 && enr.status !== 'completed') {
       const instr = await Instructor.findById(enr.course.instructor).populate('user', 'name');
       enr.status = 'completed';
       enr.certificate = {
@@ -104,6 +124,49 @@ exports.updateProgress = async (req, res) => {
         directorName: instr && instr.user ? instr.user.name : '',
         number: certNumber()
       };
+
+      // Award points for course completion
+      const Patient = require("../models/patient");
+      const User = require("../models/user");
+      const MedicalRecord = require("../models/medicalRecord");
+      const Notification = require("../models/notification");
+
+      const patient = await User.findById(userId);
+      await Patient.findOneAndUpdate(
+        { user: userId },
+        {
+          $inc: { points: 100 },
+          $addToSet: { badges: { name: "Expert Learner", icon: "school" } }
+        }
+      );
+      console.log(`✅ 100 points awarded to user ${userId} for course completion`);
+
+      // Task 19.6: Notify doctor if this was an assigned course
+      try {
+        const records = await MedicalRecord.find({
+          patient: userId,
+          assignedCourses: enr.course._id
+        }).populate('doctor');
+
+        if (records && records.length > 0) {
+          for (const record of records) {
+            await Notification.create({
+              user: record.doctor._id,
+              title: "Patient Care Plan Progress",
+              message: `Your patient ${patient.name} has successfully completed the assigned health program: ${enr.course.title}.`,
+              type: "progress",
+              metadata: {
+                patientId: userId,
+                courseId: enr.course._id,
+                recordId: record._id
+              }
+            });
+            console.log(`🔔 Notified doctor ${record.doctor.name} about patient progress`);
+          }
+        }
+      } catch (notifyErr) {
+        console.error("❌ Failed to notify doctor about course completion:", notifyErr);
+      }
     }
     await enr.save();
     res.status(200).json({ success: true, enrollment: enr });

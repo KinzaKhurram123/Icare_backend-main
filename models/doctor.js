@@ -10,12 +10,16 @@ const doctorSchema = new mongoose.Schema({
   licenseNumber: String,
   clinicName: String,
   clinicAddress: String,
-  availableDays: [String],
-  availableTime: {
-    start: String,
-    end: String,
+  availability: {
+    availableDays: [String],
+    availableTime: {
+      start: String,
+      end: String,
+    },
+    unavailableDates: [Date],
+    bufferTime: { type: Number, default: 15 }, // Buffer time in minutes (Req 33.14)
+    emergencySlots: { type: Boolean, default: false }, // Allow emergency slots (Req 33.9)
   },
-  unavailableDates: [Date],
   isApproved: { type: Boolean, default: false },
   ratings: [Number],
   reviews: [String],

@@ -1,27 +1,26 @@
 const ChatMessage = require("../models/chatmessage");
+const Notification = require("../models/notification");
 const pusher = require("../config/pusher.config");
+const { sendPushNotification } = require("../config/firebase");
 
 exports.sendMessage = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     const { receiverId, message, attachments } = req.body;
+    console.log("📤 sendMessage body:", { receiverId, message: message?.substring(0, 30), attachmentsCount: attachments?.length });
 
     if (!receiverId || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "Receiver ID and message are required",
-      });
+      return res.status(400).json({ success: false, message: "Receiver ID and message are required" });
     }
 
     const senderId = req.user._id || req.user.id;
-    console.log("Sending message from:", senderId, "to:", receiverId);
+    console.log("📤 From:", senderId, "To:", receiverId);
 
+    // Step 1: Create message
+    console.log("⏳ Creating ChatMessage...");
     const newMessage = await ChatMessage.create({
       sender: senderId,
       receiver: receiverId,
@@ -29,33 +28,72 @@ exports.sendMessage = async (req, res) => {
       attachments: attachments || [],
       read: false,
     });
+    console.log("✅ ChatMessage created:", newMessage._id);
 
+    // Step 2: Populate
+    console.log("⏳ Populating sender/receiver...");
     await newMessage.populate("sender", "name email profileImage");
     await newMessage.populate("receiver", "name email profileImage");
+    console.log("✅ Populated. Sender:", newMessage.sender?.name);
 
-    await pusher.trigger(`private-chat-${receiverId}`, "new-message", {
-      message: newMessage,
-      sender: senderId,
-      timestamp: new Date().toISOString(),
-    });
+    // Step 3: Notification (non-critical)
+    try {
+      console.log("⏳ Creating notification...");
+      await Notification.create({
+        user: receiverId,
+        type: 'general',
+        title: 'New Message',
+        message: `${newMessage.sender.name} sent you a message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`,
+        read: false,
+        data: { senderId: senderId.toString(), senderName: newMessage.sender.name },
+      });
+      console.log("✅ Notification created");
 
-    await pusher.trigger(`private-chat-${senderId}`, "message-sent", {
-      message: newMessage,
-      receiver: receiverId,
-      timestamp: new Date().toISOString(),
-    });
+      // FCM push (non-critical)
+      try {
+        const User = require('../models/user');
+        const receiver = await User.findById(receiverId).select('fcmToken');
+        if (receiver?.fcmToken) {
+          await sendPushNotification(
+            receiver.fcmToken,
+            `New message from ${newMessage.sender.name}`,
+            message.substring(0, 100),
+            { type: 'chat', senderId: senderId.toString(), senderName: newMessage.sender.name }
+          );
+        }
+      } catch (fcmErr) {
+        console.warn("⚠️ FCM push failed (non-critical):", fcmErr.message);
+      }
+    } catch (notifErr) {
+      console.warn("⚠️ Notification failed (non-critical):", notifErr.message);
+    }
 
-    res.status(201).json({
-      success: true,
-      data: newMessage,
-    });
+    // Step 4: Pusher (non-critical)
+    try {
+      console.log("⏳ Triggering Pusher...");
+      pusher.trigger(`private-chat-${receiverId}`, "new-message", {
+        messageId: newMessage._id.toString(),
+        senderId: senderId.toString(),
+        senderName: newMessage.sender?.name,
+        message: message,
+        timestamp: new Date().toISOString(),
+      }).catch(e => console.warn("⚠️ Pusher trigger 1 failed:", e.message));
+
+      pusher.trigger(`private-chat-${senderId}`, "message-sent", {
+        messageId: newMessage._id.toString(),
+        receiverId: receiverId.toString(),
+        timestamp: new Date().toISOString(),
+      }).catch(e => console.warn("⚠️ Pusher trigger 2 failed:", e.message));
+    } catch (pusherError) {
+      console.warn("⚠️ Pusher trigger failed (non-critical):", pusherError.message);
+    }
+
+    console.log("✅ sendMessage complete, returning 201");
+    res.status(201).json({ success: true, data: newMessage });
   } catch (error) {
-    console.error("Send message error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to send message",
-      error: error.message,
-    });
+    console.error("❌ Send message error:", error.message);
+    console.error("❌ Stack:", error.stack);
+    res.status(500).json({ success: false, message: "Failed to send message", error: error.message });
   }
 };
 
@@ -130,10 +168,14 @@ exports.markAsRead = async (req, res) => {
 
     console.log(`Marked ${result.modifiedCount} messages as read`);
 
-    await pusher.trigger(`private-chat-${senderId}`, "messages-read", {
-      reader: currentUserId,
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      await pusher.trigger(`private-chat-${senderId}`, "messages-read", {
+        reader: currentUserId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger failed (non-critical):", pusherError.message);
+    }
 
     res.json({
       success: true,
@@ -168,11 +210,15 @@ exports.typingIndicator = async (req, res) => {
       });
     }
 
-    await pusher.trigger(`private-chat-${receiverId}`, "typing-indicator", {
-      user: senderId,
-      isTyping: isTyping || false,
-      timestamp: Date.now(),
-    });
+    try {
+      await pusher.trigger(`private-chat-${receiverId}`, "typing-indicator", {
+        user: senderId,
+        isTyping: isTyping || false,
+        timestamp: Date.now(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger failed (non-critical):", pusherError.message);
+    }
 
     res.json({
       success: true,
@@ -191,25 +237,18 @@ exports.typingIndicator = async (req, res) => {
 exports.getConversations = async (req, res) => {
   try {
     console.log("getConversations called");
-    console.log("req.user:", req.user);
 
     if (!req.user) {
-      console.log("req.user is null! Auth middleware failed?");
       return res.status(401).json({
         success: false,
         message: "User not authenticated - Please login again",
       });
     }
 
-    const currentUserId = req.user._id ? req.user._id.toString() : req.user.id;
-
-    if (!currentUserId) {
-      console.log("No user ID found in req.user:", req.user);
-      return res.status(400).json({
-        success: false,
-        message: "User ID not found in token",
-      });
-    }
+    const mongoose = require("mongoose");
+    const currentUserId = new mongoose.Types.ObjectId(
+      req.user._id ? req.user._id.toString() : req.user.id
+    );
 
     console.log("Current User ID:", currentUserId);
 
